@@ -1,0 +1,54 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "PC Test: M2006 Control",
+      "type": "shell",
+      "command": "gcc",
+      "args": [
+        "-std=c99",
+        "-Wall",
+        "-Wextra",
+        "-ICore/Inc",
+        "tests/pc/test_m2006_control.c",
+        "Core/Src/pid.c",
+        "Core/Src/dji_m2006.c",
+        "-o",
+        "tests/pc/test_m2006_control.exe"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": "$gcc",
+      "group": "test"
+    },
+    {
+      "label": "Run PC Test: M2006 Control",
+      "type": "shell",
+      "command": "${workspaceFolder}/tests/pc/test_m2006_control.exe",
+      "dependsOn": "PC Test: M2006 Control",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Keil Build",
+      "type": "shell",
+      "command": "D:/Keil_v5/UV4/UV4.exe",
+      "args": [
+        "-b",
+        "${workspaceFolder}/MDK-ARM/single_motor_test.uvprojx",
+        "-j0"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

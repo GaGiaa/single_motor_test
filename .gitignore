@@ -1,0 +1,28 @@
+# Keil / MDK build outputs
+MDK-ARM/single_motor_test/
+*.uvguix.*
+*.uvgui.*
+*.scvd
+*.lst
+*.map
+*.axf
+*.hex
+*.elf
+*.bin
+*.o
+*.d
+*.crf
+*.dep
+*.lnp
+*.htm
+*.build_log.htm
+
+# Local test binaries
+tests/**/*.exe
+tests/**/*.obj
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
