@@ -14,30 +14,32 @@
 - 当前功能：单电机调试工程，编译期选择 DJI 协议或 RobStride/EDULITE 协议。
 - DJI 支持：M2006/C610、M3508/C620，电机 ID 1-8。
 - RobStride 支持：EDULITE 05 / EL05，默认私有协议扩展帧。
-- 当前默认配置：`CAN2 + ID2 + M2006/C610`，配置入口在 `Core/Inc/dji_motor_debug_config.h`。
+- 当前默认配置：`CAN2 + ID2 + M2006/C610`，配置入口在 `Application/Inc/dji_motor_debug_config.h`。
 
 ## 关键文件
 
+- `Core/Inc` 和 `Core/Src`：CubeMX / HAL / BSP / RTOS 生成或强相关 glue 文件。
+- `Application/Inc` 和 `Application/Src`：手写协议、控制、调试任务和 PC 可测逻辑。
 - `single_motor_test.ioc`：CubeMX 工程源文件，硬件和中间件配置从这里生成。
 - `MDK-ARM/single_motor_test.uvprojx`：Keil 工程文件，已设置 `<uAC6>1</uAC6>`，不要随意改回 ARMCC5。
 - `MDK-ARM/single_motor_test.uvoptx`：Keil 选项文件，可能包含 Watch 配置；源文件增删改名时也要同步检查。
-- `Core/Inc/dji_motor_debug_config.h`：单电机调试编译期配置，包含 CAN 通道、电机 ID、电机类型。
-- `Core/Inc/motor_debug_config.h`：总协议和 CAN 通道选择，默认 `MOTOR_DEBUG_PROTOCOL_DJI`。
-- `Core/Inc/dji_motor.h` 和 `Core/Src/dji_motor.c`：DJI 电机通用协议层，负责反馈解析、电流单位换算、控制帧 ID/slot 打包。
-- `Core/Inc/dji_motor_task.h` 和 `Core/Src/dji_motor_task.c`：RTOS 电机调试任务、FDCAN 收发、调试变量更新。
-- `Core/Inc/dji_motor_task_logic.h` 和 `Core/Src/dji_motor_task_logic.c`：任务纯控制逻辑，供生产任务和 PC 测试共用。
-- `Core/Inc/robstride_motor.h` 和 `Core/Src/robstride_motor.c`：RobStride/EDULITE 私有协议层，负责扩展帧 ID、运控帧和反馈解析。
-- `Core/Inc/robstride_motor_task.h` 和 `Core/Src/robstride_motor_task.c`：RobStride/EDULITE RTOS 调试任务和 Watch 入口。
-- `Core/Inc/pid.h` 和 `Core/Src/pid.c`：增量式 PID 和位置式 PID，使用真实 `dt_s`。
+- `Application/Inc/dji_motor_debug_config.h`：单电机调试编译期配置，包含 CAN 通道、电机 ID、电机类型。
+- `Application/Inc/motor_debug_config.h`：总协议和 CAN 通道选择，默认 `MOTOR_DEBUG_PROTOCOL_DJI`。
+- `Application/Inc/dji_motor.h` 和 `Application/Src/dji_motor.c`：DJI 电机通用协议层，负责反馈解析、电流单位换算、控制帧 ID/slot 打包。
+- `Application/Inc/dji_motor_task.h` 和 `Application/Src/dji_motor_task.c`：RTOS 电机调试任务、FDCAN 收发、调试变量更新。
+- `Application/Inc/dji_motor_task_logic.h` 和 `Application/Src/dji_motor_task_logic.c`：任务纯控制逻辑，供生产任务和 PC 测试共用。
+- `Application/Inc/robstride_motor.h` 和 `Application/Src/robstride_motor.c`：RobStride/EDULITE 私有协议层，负责扩展帧 ID、运控帧和反馈解析。
+- `Application/Inc/robstride_motor_task.h` 和 `Application/Src/robstride_motor_task.c`：RobStride/EDULITE RTOS 调试任务和 Watch 入口。
+- `Application/Inc/pid.h` 和 `Application/Src/pid.c`：增量式 PID 和位置式 PID，使用真实 `dt_s`。
 - `tests/pc/test_dji_motor_control.c`：PC 侧回归测试，覆盖 PID、反馈解析、电流换算、控制帧打包和任务纯逻辑。
 - `tests/pc/test_robstride_motor_control.c`：RobStride/EDULITE PC 侧协议回归测试。
 - `.vscode/tasks.json`：VS Code 任务，包含 PC 测试和 Keil 构建入口。
 
 ## 编译期调试配置
 
-配置文件：`Core/Inc/dji_motor_debug_config.h`
+配置文件：`Application/Inc/dji_motor_debug_config.h`
 
-总配置文件：`Core/Inc/motor_debug_config.h`
+总配置文件：`Application/Inc/motor_debug_config.h`
 
 - `MOTOR_DEBUG_PROTOCOL`：`MOTOR_DEBUG_PROTOCOL_DJI` 或 `MOTOR_DEBUG_PROTOCOL_ROBSTRIDE`。
 - `MOTOR_DEBUG_CAN_CHANNEL`：只能为 `1U`、`2U` 或 `3U`，默认 `2U`。
@@ -56,7 +58,7 @@ DJI 配置：
 #define DJI_DEBUG_MOTOR_TYPE       DJI_MOTOR_TYPE_M2006
 ```
 
-RobStride 配置文件：`Core/Inc/robstride_motor_debug_config.h`
+RobStride 配置文件：`Application/Inc/robstride_motor_debug_config.h`
 
 - `ROBSTRIDE_DEBUG_MOTOR_ID`：只能为 `1U` 到 `16U`，默认 `1U`。
 - `ROBSTRIDE_DEBUG_HOST_CAN_ID`：默认 `0xFDU`。
@@ -155,14 +157,14 @@ g_robstride_motor_debug
 PC 回归测试：
 
 ```powershell
-gcc -std=c99 -Wall -Wextra -ICore/Inc tests/pc/test_dji_motor_control.c Core/Src/pid.c Core/Src/dji_motor.c Core/Src/dji_motor_task_logic.c -o tests/pc/test_dji_motor_control.exe
+gcc -std=c99 -Wall -Wextra -ICore/Inc -IApplication/Inc tests/pc/test_dji_motor_control.c Application/Src/pid.c Application/Src/dji_motor.c Application/Src/dji_motor_task_logic.c -o tests/pc/test_dji_motor_control.exe
 .\tests\pc\test_dji_motor_control.exe
 ```
 
 RobStride PC 回归测试：
 
 ```powershell
-gcc -std=c99 -Wall -Wextra -ICore/Inc tests/pc/test_robstride_motor_control.c Core/Src/robstride_motor.c -o tests/pc/test_robstride_motor_control.exe
+gcc -std=c99 -Wall -Wextra -ICore/Inc -IApplication/Inc tests/pc/test_robstride_motor_control.c Application/Src/robstride_motor.c -o tests/pc/test_robstride_motor_control.exe
 .\tests\pc\test_robstride_motor_control.exe
 ```
 
@@ -214,12 +216,12 @@ compiling robstride_motor_task.c...
 1. 先读 `git log --oneline --decorate -5`，确认当前提交历史。
 2. 再读本文档，建立工程上下文。
 3. 查看 `git status --short --ignored`，区分源码改动和被忽略构建产物。
-4. 需要改 DJI 控制任务时，优先查看 `Core/Src/dji_motor_task.c` 和 `Core/Src/dji_motor_task_logic.c`。
-5. 需要改 DJI 协议解析或电流换算时，查看 `Core/Src/dji_motor.c`。
-6. 需要改 RobStride/EDULITE 协议时，查看 `Core/Src/robstride_motor.c`。
-6. 需要改 PID 行为时，查看 `Core/Src/pid.c` 并同步更新 PC 测试。
-7. 完成修改后至少运行 PC 回归测试；涉及 Keil 工程、嵌入式编译或源文件增删改名时，再运行 Keil 构建。
-8. 只有用户明确要求时才提交，并按中文详细提交信息规则执行。
+4. 需要改 DJI 控制任务时，优先查看 `Application/Src/dji_motor_task.c` 和 `Application/Src/dji_motor_task_logic.c`。
+5. 需要改 DJI 协议解析或电流换算时，查看 `Application/Src/dji_motor.c`。
+6. 需要改 RobStride/EDULITE 协议时，查看 `Application/Src/robstride_motor.c`。
+7. 需要改 PID 行为时，查看 `Application/Src/pid.c` 并同步更新 PC 测试。
+8. 完成修改后至少运行 PC 回归测试；涉及 Keil 工程、嵌入式编译或源文件增删改名时，再运行 Keil 构建。
+9. 只有用户明确要求时才提交，并按中文详细提交信息规则执行。
 
 ## Keil 源文件重命名易错点
 
@@ -227,4 +229,4 @@ compiling robstride_motor_task.c...
 - 不能只看源码 include 或 PC 侧 gcc 测试是否通过。
 - 必须重新运行 Keil 构建，并检查 `MDK-ARM/single_motor_test/single_motor_test.build_log.htm` 中实际 `compiling xxx.c...` 的文件名。
 - 典型失败形态：`armclang: error: no such file or directory: '../Core/Src/old_name.c'`。
-- 具体例子：把 `dji_m2006.c` 改名为 `dji_motor.c` 后，两个 Keil 工程文件都必须引用 `../Core/Src/dji_motor.c`。
+- 具体例子：把 `dji_m2006.c` 改名为 `dji_motor.c` 后，两个 Keil 工程文件都必须引用 `../Application/Src/dji_motor.c`。

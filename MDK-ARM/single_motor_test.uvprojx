@@ -340,7 +340,7 @@
               <MiscControls></MiscControls>
               <Define>USE_PWR_LDO_SUPPLY,USE_HAL_DRIVER,STM32H723xx</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Drivers/CMSIS/Device/ST/STM32H7xx/Include;../Drivers/CMSIS/Include;../Middlewares/ST/ARM/DSP/Inc</IncludePath>
+              <IncludePath>../Core/Inc;../Application/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Drivers/CMSIS/Device/ST/STM32H7xx/Include;../Drivers/CMSIS/Include;../Middlewares/ST/ARM/DSP/Inc</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -358,7 +358,7 @@
               <MiscControls></MiscControls>
               <Define></Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Drivers/CMSIS/Device/ST/STM32H7xx/Include;../Drivers/CMSIS/Include;../Middlewares/ST/ARM/DSP/Inc</IncludePath>
+              <IncludePath>../Core/Inc;../Application/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Drivers/CMSIS/Device/ST/STM32H7xx/Include;../Drivers/CMSIS/Include;../Middlewares/ST/ARM/DSP/Inc</IncludePath>
             </VariousControls>
           </Aads>
           <LDads>
@@ -442,32 +442,32 @@
             <File>
               <FileName>pid.c</FileName>
               <FileType>1</FileType>
-              <FilePath>../Core/Src/pid.c</FilePath>
+              <FilePath>../Application/Src/pid.c</FilePath>
             </File>
             <File>
               <FileName>dji_motor.c</FileName>
               <FileType>1</FileType>
-              <FilePath>../Core/Src/dji_motor.c</FilePath>
+              <FilePath>../Application/Src/dji_motor.c</FilePath>
             </File>
             <File>
               <FileName>dji_motor_task_logic.c</FileName>
               <FileType>1</FileType>
-              <FilePath>../Core/Src/dji_motor_task_logic.c</FilePath>
+              <FilePath>../Application/Src/dji_motor_task_logic.c</FilePath>
             </File>
             <File>
               <FileName>dji_motor_task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>../Core/Src/dji_motor_task.c</FilePath>
+              <FilePath>../Application/Src/dji_motor_task.c</FilePath>
             </File>
             <File>
               <FileName>robstride_motor.c</FileName>
               <FileType>1</FileType>
-              <FilePath>../Core/Src/robstride_motor.c</FilePath>
+              <FilePath>../Application/Src/robstride_motor.c</FilePath>
             </File>
             <File>
               <FileName>robstride_motor_task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>../Core/Src/robstride_motor_task.c</FilePath>
+              <FilePath>../Application/Src/robstride_motor_task.c</FilePath>
             </File>
           </Files>
         </Group>

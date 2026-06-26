@@ -349,7 +349,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>../Core/Src/pid.c</PathWithFileName>
+      <PathWithFileName>../Application/Src/pid.c</PathWithFileName>
       <FilenameWithoutPath>pid.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
@@ -361,7 +361,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>../Core/Src/dji_motor.c</PathWithFileName>
+      <PathWithFileName>../Application/Src/dji_motor.c</PathWithFileName>
       <FilenameWithoutPath>dji_motor.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
@@ -373,7 +373,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>../Core/Src/dji_motor_task_logic.c</PathWithFileName>
+      <PathWithFileName>../Application/Src/dji_motor_task_logic.c</PathWithFileName>
       <FilenameWithoutPath>dji_motor_task_logic.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
@@ -385,7 +385,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>../Core/Src/dji_motor_task.c</PathWithFileName>
+      <PathWithFileName>../Application/Src/dji_motor_task.c</PathWithFileName>
       <FilenameWithoutPath>dji_motor_task.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
@@ -397,7 +397,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>../Core/Src/robstride_motor.c</PathWithFileName>
+      <PathWithFileName>../Application/Src/robstride_motor.c</PathWithFileName>
       <FilenameWithoutPath>robstride_motor.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
@@ -409,7 +409,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>../Core/Src/robstride_motor_task.c</PathWithFileName>
+      <PathWithFileName>../Application/Src/robstride_motor_task.c</PathWithFileName>
       <FilenameWithoutPath>robstride_motor_task.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
