@@ -1,0 +1,31 @@
+#ifndef ROBSTRIDE_MOTOR_DEBUG_CONFIG_H
+#define ROBSTRIDE_MOTOR_DEBUG_CONFIG_H
+
+#include "motor_debug_config.h"
+#include "robstride_motor.h"
+
+#ifndef ROBSTRIDE_DEBUG_MOTOR_ID
+#define ROBSTRIDE_DEBUG_MOTOR_ID          (1U)
+#endif
+
+#ifndef ROBSTRIDE_DEBUG_HOST_CAN_ID
+#define ROBSTRIDE_DEBUG_HOST_CAN_ID       (0xFDU)
+#endif
+
+#ifndef ROBSTRIDE_DEBUG_MOTOR_TYPE
+#define ROBSTRIDE_DEBUG_MOTOR_TYPE        ROBSTRIDE_MOTOR_TYPE_EL05
+#endif
+
+#if (ROBSTRIDE_DEBUG_MOTOR_ID < 1U) || (ROBSTRIDE_DEBUG_MOTOR_ID > 16U)
+#error "ROBSTRIDE_DEBUG_MOTOR_ID must be from 1 to 16"
+#endif
+
+#if (ROBSTRIDE_DEBUG_HOST_CAN_ID > 0xFFU)
+#error "ROBSTRIDE_DEBUG_HOST_CAN_ID must be from 0 to 255"
+#endif
+
+#if (ROBSTRIDE_DEBUG_MOTOR_TYPE != ROBSTRIDE_MOTOR_TYPE_EL05)
+#error "ROBSTRIDE_DEBUG_MOTOR_TYPE must be ROBSTRIDE_MOTOR_TYPE_EL05"
+#endif
+
+#endif

@@ -219,6 +219,7 @@ void DJI_Motor_Task_Run(void *argument)
     }
 }
 
+#if (MOTOR_DEBUG_PROTOCOL == MOTOR_DEBUG_PROTOCOL_DJI)
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 {
     if (hfdcan != NULL &&
@@ -227,5 +228,6 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
         DJI_Motor_DrainRxFifo();
     }
 }
+#endif
 
 

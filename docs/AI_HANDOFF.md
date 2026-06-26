@@ -11,7 +11,9 @@
 - IDE/工具链：`MDK-ARM`，Keil 使用 ArmClang/AC6。
 - RTOS：CMSIS-RTOS2 / FreeRTOS。
 - 应用代码语言：C。
-- 当前功能：单 DJI 电机调试工程，编译期选择 CAN1/CAN2/CAN3、电机 ID 1-8、电机型号 M2006/C610 或 M3508/C620。
+- 当前功能：单电机调试工程，编译期选择 DJI 协议或 RobStride/EDULITE 协议。
+- DJI 支持：M2006/C610、M3508/C620，电机 ID 1-8。
+- RobStride 支持：EDULITE 05 / EL05，默认私有协议扩展帧。
 - 当前默认配置：`CAN2 + ID2 + M2006/C610`，配置入口在 `Core/Inc/dji_motor_debug_config.h`。
 
 ## 关键文件
@@ -20,16 +22,27 @@
 - `MDK-ARM/single_motor_test.uvprojx`：Keil 工程文件，已设置 `<uAC6>1</uAC6>`，不要随意改回 ARMCC5。
 - `MDK-ARM/single_motor_test.uvoptx`：Keil 选项文件，可能包含 Watch 配置；源文件增删改名时也要同步检查。
 - `Core/Inc/dji_motor_debug_config.h`：单电机调试编译期配置，包含 CAN 通道、电机 ID、电机类型。
+- `Core/Inc/motor_debug_config.h`：总协议和 CAN 通道选择，默认 `MOTOR_DEBUG_PROTOCOL_DJI`。
 - `Core/Inc/dji_motor.h` 和 `Core/Src/dji_motor.c`：DJI 电机通用协议层，负责反馈解析、电流单位换算、控制帧 ID/slot 打包。
 - `Core/Inc/dji_motor_task.h` 和 `Core/Src/dji_motor_task.c`：RTOS 电机调试任务、FDCAN 收发、调试变量更新。
 - `Core/Inc/dji_motor_task_logic.h` 和 `Core/Src/dji_motor_task_logic.c`：任务纯控制逻辑，供生产任务和 PC 测试共用。
+- `Core/Inc/robstride_motor.h` 和 `Core/Src/robstride_motor.c`：RobStride/EDULITE 私有协议层，负责扩展帧 ID、运控帧和反馈解析。
+- `Core/Inc/robstride_motor_task.h` 和 `Core/Src/robstride_motor_task.c`：RobStride/EDULITE RTOS 调试任务和 Watch 入口。
 - `Core/Inc/pid.h` 和 `Core/Src/pid.c`：增量式 PID 和位置式 PID，使用真实 `dt_s`。
 - `tests/pc/test_dji_motor_control.c`：PC 侧回归测试，覆盖 PID、反馈解析、电流换算、控制帧打包和任务纯逻辑。
+- `tests/pc/test_robstride_motor_control.c`：RobStride/EDULITE PC 侧协议回归测试。
 - `.vscode/tasks.json`：VS Code 任务，包含 PC 测试和 Keil 构建入口。
 
 ## 编译期调试配置
 
 配置文件：`Core/Inc/dji_motor_debug_config.h`
+
+总配置文件：`Core/Inc/motor_debug_config.h`
+
+- `MOTOR_DEBUG_PROTOCOL`：`MOTOR_DEBUG_PROTOCOL_DJI` 或 `MOTOR_DEBUG_PROTOCOL_ROBSTRIDE`。
+- `MOTOR_DEBUG_CAN_CHANNEL`：只能为 `1U`、`2U` 或 `3U`，默认 `2U`。
+
+DJI 配置：
 
 - `DJI_DEBUG_CAN_CHANNEL`：只能为 `1U`、`2U` 或 `3U`。
 - `DJI_DEBUG_MOTOR_ID`：只能为 `1U` 到 `8U`。
@@ -42,6 +55,12 @@
 #define DJI_DEBUG_MOTOR_ID         (2U)
 #define DJI_DEBUG_MOTOR_TYPE       DJI_MOTOR_TYPE_M2006
 ```
+
+RobStride 配置文件：`Core/Inc/robstride_motor_debug_config.h`
+
+- `ROBSTRIDE_DEBUG_MOTOR_ID`：只能为 `1U` 到 `16U`，默认 `1U`。
+- `ROBSTRIDE_DEBUG_HOST_CAN_ID`：默认 `0xFDU`。
+- `ROBSTRIDE_DEBUG_MOTOR_TYPE`：当前只支持 `ROBSTRIDE_MOTOR_TYPE_EL05`。
 
 ## DJI 电机协议规则
 
@@ -89,6 +108,23 @@ g_dji_motor_debug
 - `speed_pid_params`：速度环 PID 参数，运行时可在 Watch 中调节。
 - `angle_pid_params`：位置环 PID 参数，运行时可在 Watch 中调节。
 
+RobStride/EDULITE Watch 入口：
+
+```c
+g_robstride_motor_debug
+```
+
+主要字段：
+
+- `enable`：总使能。`false` 时周期性发送 Type 4 disable，保证安全停机。
+- `clear_fault_on_disable`：发送 disable 时 data[0] 是否置 1 清故障。
+- `set_zero_request`：置 `true` 后发送一次 Type 6 set zero，然后任务自动清零。
+- `target_position_rad`、`target_velocity_rad_s`、`target_torque_Nm`：Type 1 运控目标。
+- `kp`、`kd`：Type 1 运控刚度和阻尼。
+- `feedback_position_rad`、`feedback_velocity_rad_s`、`feedback_torque_Nm`、`feedback_temperature_c`：Type 2 反馈。
+- `mode_state`、`fault_code`：从 Type 2 扩展 ID 解析出的模式和故障字段。
+- `last_rx_can_id`、`last_tx_can_id`：最近一次收发扩展帧 ID。
+
 推荐首次上电调试顺序：
 
 1. 保持 `enable = false`，确认 Watch 变量和反馈字段可观察。
@@ -105,6 +141,15 @@ g_dji_motor_debug
 - PID 参数单位和输出单位直接对应调试变量，不做隐藏 x10/x100 缩放。
 - 当前默认参数偏保守，目标是安全起转和方便调试，不追求开箱高速响应。
 
+## RobStride / EDULITE 05 协议
+
+- CAN：Classic CAN 2.0 扩展帧，29-bit ID，默认 1 Mbps。
+- 扩展 ID：bit28..24 为通信类型，bit23..8 为数据区 2，bit7..0 为目标电机 ID。
+- Type 1 运控帧：data 为 big-endian `position/velocity/kp/kd`，前馈 torque raw 放在扩展 ID 的数据区 2。
+- Type 2 反馈帧：data 为 big-endian `position/velocity/torque/temperature`，电机 ID、fault、mode 从扩展 ID 解析。
+- EL05 范围：位置 `-12.57..12.57 rad`，速度 `-50..50 rad/s`，力矩 `-6..6 Nm`，Kp `0..500`，Kd `0..5`。
+- 首版不实现持久参数写入、保存、波特率修改和协议切换，避免误改设备配置。
+
 ## 构建和测试
 
 PC 回归测试：
@@ -112,6 +157,13 @@ PC 回归测试：
 ```powershell
 gcc -std=c99 -Wall -Wextra -ICore/Inc tests/pc/test_dji_motor_control.c Core/Src/pid.c Core/Src/dji_motor.c Core/Src/dji_motor_task_logic.c -o tests/pc/test_dji_motor_control.exe
 .\tests\pc\test_dji_motor_control.exe
+```
+
+RobStride PC 回归测试：
+
+```powershell
+gcc -std=c99 -Wall -Wextra -ICore/Inc tests/pc/test_robstride_motor_control.c Core/Src/robstride_motor.c -o tests/pc/test_robstride_motor_control.exe
+.\tests\pc\test_robstride_motor_control.exe
 ```
 
 期望结果：
@@ -137,6 +189,8 @@ MDK-ARM\single_motor_test\single_motor_test.build_log.htm
 ```text
 compiling dji_motor_task_logic.c...
 compiling dji_motor_task.c...
+compiling robstride_motor.c...
+compiling robstride_motor_task.c...
 "single_motor_test\single_motor_test.axf" - 0 Error(s)
 ```
 
@@ -150,8 +204,9 @@ compiling dji_motor_task.c...
 ## 当前注意事项
 
 - `MDK-ARM/single_motor_test.uvprojx` 中的 `<uAC6>1</uAC6>` 很重要。当前 FreeRTOS port 使用 clang/GCC 风格内联汇编，改回 ARMCC5 会导致 `portmacro.h` 编译失败。
-- `MDK-ARM/EventRecorderStub.scvd`、`MDK-ARM/single_motor_test/`、`MDK-ARM/startup_stm32h723xx.lst`、`tests/pc/test_dji_motor_control.exe` 是可再生成产物，不应提交。
-- 如果重新用 CubeMX 生成代码，要重点检查用户代码区是否保留，以及 `pid.c`、`dji_motor.c`、`dji_motor_task_logic.c`、`dji_motor_task.c` 是否仍在 Keil 工程文件中。
+- `MDK-ARM/EventRecorderStub.scvd`、`MDK-ARM/single_motor_test/`、`MDK-ARM/startup_stm32h723xx.lst`、`tests/pc/test_dji_motor_control.exe`、`tests/pc/test_robstride_motor_control.exe` 是可再生成产物，不应提交。
+- 如果重新用 CubeMX 生成代码，要重点检查用户代码区是否保留，以及 `pid.c`、`dji_motor.c`、`dji_motor_task_logic.c`、`dji_motor_task.c`、`robstride_motor.c`、`robstride_motor_task.c` 是否仍在 Keil 工程文件中。
+- RobStride 需要 FDCAN 扩展滤波器，`fdcan.c` 中各 FDCAN 实例的 `ExtFiltersNbr` 当前为 `1`。
 - 如果 CAN 没有反馈，优先检查物理 CAN 线、终端电阻、电调 ID、当前 `DJI_DEBUG_CAN_CHANNEL` 对应的 FDCAN 引脚和滤波器反馈 ID。
 
 ## 新 AI 接手流程
@@ -159,8 +214,9 @@ compiling dji_motor_task.c...
 1. 先读 `git log --oneline --decorate -5`，确认当前提交历史。
 2. 再读本文档，建立工程上下文。
 3. 查看 `git status --short --ignored`，区分源码改动和被忽略构建产物。
-4. 需要改控制任务时，优先查看 `Core/Src/dji_motor_task.c` 和 `Core/Src/dji_motor_task_logic.c`。
-5. 需要改协议解析或电流换算时，查看 `Core/Src/dji_motor.c`。
+4. 需要改 DJI 控制任务时，优先查看 `Core/Src/dji_motor_task.c` 和 `Core/Src/dji_motor_task_logic.c`。
+5. 需要改 DJI 协议解析或电流换算时，查看 `Core/Src/dji_motor.c`。
+6. 需要改 RobStride/EDULITE 协议时，查看 `Core/Src/robstride_motor.c`。
 6. 需要改 PID 行为时，查看 `Core/Src/pid.c` 并同步更新 PC 测试。
 7. 完成修改后至少运行 PC 回归测试；涉及 Keil 工程、嵌入式编译或源文件增删改名时，再运行 Keil 构建。
 8. 只有用户明确要求时才提交，并按中文详细提交信息规则执行。

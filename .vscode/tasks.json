@@ -38,6 +38,37 @@
       }
     },
     {
+      "label": "PC Test: RobStride Motor Control",
+      "type": "shell",
+      "command": "gcc",
+      "args": [
+        "-std=c99",
+        "-Wall",
+        "-Wextra",
+        "-ICore/Inc",
+        "tests/pc/test_robstride_motor_control.c",
+        "Core/Src/robstride_motor.c",
+        "-o",
+        "tests/pc/test_robstride_motor_control.exe"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": "$gcc",
+      "group": "test"
+    },
+    {
+      "label": "Run PC Test: RobStride Motor Control",
+      "type": "shell",
+      "command": "${workspaceFolder}/tests/pc/test_robstride_motor_control.exe",
+      "dependsOn": "PC Test: RobStride Motor Control",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
       "label": "Keil Build",
       "type": "shell",
       "command": "D:/Keil_v5/UV4/UV4.exe",

@@ -2,6 +2,7 @@
 #define DJI_MOTOR_DEBUG_CONFIG_H
 
 #include "dji_motor.h"
+#include "motor_debug_config.h"
 
 /*
  * Single-motor debug build switches:
@@ -10,7 +11,7 @@
  * - DJI_DEBUG_MOTOR_TYPE: DJI_MOTOR_TYPE_M2006 or DJI_MOTOR_TYPE_M3508
  */
 #ifndef DJI_DEBUG_CAN_CHANNEL
-#define DJI_DEBUG_CAN_CHANNEL      (2U)
+#define DJI_DEBUG_CAN_CHANNEL      MOTOR_DEBUG_CAN_CHANNEL
 #endif
 
 #ifndef DJI_DEBUG_MOTOR_ID
@@ -35,4 +36,3 @@
 #endif
 
 #endif
-

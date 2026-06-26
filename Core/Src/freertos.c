@@ -26,6 +26,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "dji_motor_task.h"
+#include "motor_debug_config.h"
+#include "robstride_motor_task.h"
 
 /* USER CODE END Includes */
 
@@ -127,7 +129,11 @@ void MX_FREERTOS_Init(void) {
 __weak void startDefaultTask(void *argument)
 {
   /* USER CODE BEGIN startDefaultTask */
+#if (MOTOR_DEBUG_PROTOCOL == MOTOR_DEBUG_PROTOCOL_ROBSTRIDE)
+  RobStride_Motor_Task_Run(argument);
+#else
   DJI_Motor_Task_Run(argument);
+#endif
   /* USER CODE END startDefaultTask */
 }
 
