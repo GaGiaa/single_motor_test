@@ -153,7 +153,7 @@
         <Ww>
           <count>0</count>
           <WinNumber>1</WinNumber>
-          <ItemText>g_m2006_debug,0x0A</ItemText>
+          <ItemText>g_dji_motor_debug,0x0A</ItemText>
         </Ww>
       </WatchWindow1>
       <Tracepoint>
@@ -361,8 +361,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>../Core/Src/dji_m2006.c</PathWithFileName>
-      <FilenameWithoutPath>dji_m2006.c</FilenameWithoutPath>
+      <PathWithFileName>../Core/Src/dji_motor.c</PathWithFileName>
+      <FilenameWithoutPath>dji_motor.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -373,8 +373,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>../Core/Src/m2006_task.c</PathWithFileName>
-      <FilenameWithoutPath>m2006_task.c</FilenameWithoutPath>
+      <PathWithFileName>../Core/Src/dji_motor_task.c</PathWithFileName>
+      <FilenameWithoutPath>dji_motor_task.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>

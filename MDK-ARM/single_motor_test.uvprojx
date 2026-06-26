@@ -445,14 +445,14 @@
               <FilePath>../Core/Src/pid.c</FilePath>
             </File>
             <File>
-              <FileName>dji_m2006.c</FileName>
+              <FileName>dji_motor.c</FileName>
               <FileType>1</FileType>
-              <FilePath>../Core/Src/dji_m2006.c</FilePath>
+              <FilePath>../Core/Src/dji_motor.c</FilePath>
             </File>
             <File>
-              <FileName>m2006_task.c</FileName>
+              <FileName>dji_motor_task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>../Core/Src/m2006_task.c</FilePath>
+              <FilePath>../Core/Src/dji_motor_task.c</FilePath>
             </File>
           </Files>
         </Group>

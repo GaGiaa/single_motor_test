@@ -1,4 +1,4 @@
-/* USER CODE BEGIN Header */
+﻿/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * File Name          : freertos.c
@@ -25,7 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "m2006_task.h"
+#include "dji_motor_task.h"
 
 /* USER CODE END Includes */
 
@@ -127,7 +127,7 @@ void MX_FREERTOS_Init(void) {
 __weak void startDefaultTask(void *argument)
 {
   /* USER CODE BEGIN startDefaultTask */
-  M2006_Task_Run(argument);
+  DJI_Motor_Task_Run(argument);
   /* USER CODE END startDefaultTask */
 }
 
@@ -135,4 +135,5 @@ __weak void startDefaultTask(void *argument)
 /* USER CODE BEGIN Application */
 
 /* USER CODE END Application */
+
 
