@@ -2,7 +2,7 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "PC Test: M2006 Control",
+      "label": "PC Test: DJI Motor Control",
       "type": "shell",
       "command": "gcc",
       "args": [
@@ -10,11 +10,12 @@
         "-Wall",
         "-Wextra",
         "-ICore/Inc",
-        "tests/pc/test_m2006_control.c",
+        "tests/pc/test_dji_motor_control.c",
         "Core/Src/pid.c",
-        "Core/Src/dji_m2006.c",
+        "Core/Src/dji_motor.c",
+        "Core/Src/dji_motor_task_logic.c",
         "-o",
-        "tests/pc/test_m2006_control.exe"
+        "tests/pc/test_dji_motor_control.exe"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -23,10 +24,10 @@
       "group": "test"
     },
     {
-      "label": "Run PC Test: M2006 Control",
+      "label": "Run PC Test: DJI Motor Control",
       "type": "shell",
-      "command": "${workspaceFolder}/tests/pc/test_m2006_control.exe",
-      "dependsOn": "PC Test: M2006 Control",
+      "command": "${workspaceFolder}/tests/pc/test_dji_motor_control.exe",
+      "dependsOn": "PC Test: DJI Motor Control",
       "options": {
         "cwd": "${workspaceFolder}"
       },

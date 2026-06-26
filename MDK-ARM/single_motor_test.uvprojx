@@ -450,6 +450,11 @@
               <FilePath>../Core/Src/dji_motor.c</FilePath>
             </File>
             <File>
+              <FileName>dji_motor_task_logic.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Core/Src/dji_motor_task_logic.c</FilePath>
+            </File>
+            <File>
               <FileName>dji_motor_task.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Core/Src/dji_motor_task.c</FilePath>

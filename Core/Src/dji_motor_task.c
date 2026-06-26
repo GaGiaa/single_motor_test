@@ -2,13 +2,13 @@
 
 #include "cmsis_os.h"
 #include "dji_motor_debug_config.h"
+#include "dji_motor_task_logic.h"
 #include "fdcan.h"
 
 #include <stddef.h>
 
 #define DJI_MOTOR_SPEED_DT_S            (0.001f)
 #define DJI_MOTOR_ANGLE_DT_S            (0.01f)
-#define DJI_MOTOR_POSITION_DIVIDER      (10U)
 
 DJI_Motor_Debug g_dji_motor_debug = {
     .enable = false,
@@ -188,33 +188,10 @@ static void DJI_Motor_SendCurrent(float current_A)
 
 static float DJI_Motor_CalcCommandCurrent(uint32_t tick_count)
 {
-    float command_current_A = 0.0f;
-
-    if (!g_dji_motor_debug.enable || g_dji_motor_debug.mode == DJI_MOTOR_MODE_STOP) {
-        PID_Incremental_Reset(&s_dji_motor_speed_pid);
-        PID_Position_Reset(&s_dji_motor_angle_pid);
-        return 0.0f;
-    }
-
-    if (g_dji_motor_debug.mode == DJI_MOTOR_MODE_CURRENT) {
-        command_current_A = g_dji_motor_debug.target_current_A;
-    } else {
-        s_dji_motor_speed_pid.params = g_dji_motor_debug.speed_pid_params;
-        s_dji_motor_angle_pid.params = g_dji_motor_debug.angle_pid_params;
-
-        if (g_dji_motor_debug.mode == DJI_MOTOR_MODE_POSITION &&
-            (tick_count % DJI_MOTOR_POSITION_DIVIDER) == 0U) {
-            g_dji_motor_debug.target_speed_rpm = PID_Position_Calc(&s_dji_motor_angle_pid,
-                                                                    g_dji_motor_debug.target_angle_deg,
-                                                                    g_dji_motor_debug.feedback_total_angle_deg);
-        }
-
-        command_current_A = PID_Incremental_Calc(&s_dji_motor_speed_pid,
-                                                 g_dji_motor_debug.target_speed_rpm,
-                                                 g_dji_motor_debug.feedback_speed_rpm);
-    }
-
-    return command_current_A;
+    return DJI_Motor_CalcCommandCurrentStep(&g_dji_motor_debug,
+                                            &s_dji_motor_speed_pid,
+                                            &s_dji_motor_angle_pid,
+                                            tick_count);
 }
 
 void DJI_Motor_Task_Run(void *argument)
