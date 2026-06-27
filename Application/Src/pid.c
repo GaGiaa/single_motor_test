@@ -1,4 +1,5 @@
 #include "pid.h"
+#include "app_math.h"
 
 #include <math.h>
 #include <stddef.h>
@@ -6,17 +7,6 @@
 static float pid_absf(float value)
 {
     return value < 0.0f ? -value : value;
-}
-
-static float pid_clampf(float value, float min_value, float max_value)
-{
-    if (value < min_value) {
-        return min_value;
-    }
-    if (value > max_value) {
-        return max_value;
-    }
-    return value;
 }
 
 static bool pid_has_positive_limit(float limit)
@@ -67,12 +57,12 @@ float PID_Incremental_Calc(PID_Incremental *pid, float target, float feedback)
     pid->d_out = pid->params.kd * (error - 2.0f * pid->last_error + pid->prev_error) / pid->dt_s;
 
     if (pid->params.isIOutlimit && pid_has_positive_limit(pid->params.I_Outlimit)) {
-        pid->i_out = pid_clampf(pid->i_out, -pid->params.I_Outlimit, pid->params.I_Outlimit);
+        pid->i_out = App_Math_ClampFloat(pid->i_out, -pid->params.I_Outlimit, pid->params.I_Outlimit);
     }
 
     pid->output += pid->p_out + pid->i_out + pid->d_out;
     if (pid_has_positive_limit(pid->params.output_limit)) {
-        pid->output = pid_clampf(pid->output, -pid->params.output_limit, pid->params.output_limit);
+        pid->output = App_Math_ClampFloat(pid->output, -pid->params.output_limit, pid->params.output_limit);
     }
 
     pid->prev_error = pid->last_error;
@@ -119,7 +109,7 @@ float PID_Position_Calc(PID_Position *pid, float target, float feedback)
 
     pid->integral += error * pid->dt_s;
     if (pid->params.isIOutlimit && pid_has_positive_limit(pid->params.I_Outlimit)) {
-        pid->integral = pid_clampf(pid->integral, -pid->params.I_Outlimit, pid->params.I_Outlimit);
+        pid->integral = App_Math_ClampFloat(pid->integral, -pid->params.I_Outlimit, pid->params.I_Outlimit);
     }
 
     const float derivative = pid->has_last_error ? ((error - pid->last_error) / pid->dt_s) : 0.0f;
@@ -128,7 +118,7 @@ float PID_Position_Calc(PID_Position *pid, float target, float feedback)
     pid->d_out = pid->params.kd * derivative;
     pid->output = pid->p_out + pid->i_out + pid->d_out;
     if (pid_has_positive_limit(pid->params.output_limit)) {
-        pid->output = pid_clampf(pid->output, -pid->params.output_limit, pid->params.output_limit);
+        pid->output = App_Math_ClampFloat(pid->output, -pid->params.output_limit, pid->params.output_limit);
     }
 
     pid->last_error = error;

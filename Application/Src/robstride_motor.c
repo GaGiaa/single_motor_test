@@ -1,18 +1,8 @@
 #include "robstride_motor.h"
+#include "app_math.h"
 
 #include <stddef.h>
 #include <string.h>
-
-static float robstride_clampf(float value, float min_value, float max_value)
-{
-    if (value < min_value) {
-        return min_value;
-    }
-    if (value > max_value) {
-        return max_value;
-    }
-    return value;
-}
 
 static uint16_t robstride_be_u16(const uint8_t data[8], uint8_t index)
 {
@@ -27,7 +17,7 @@ static void robstride_put_be_u16(uint8_t data[8], uint8_t index, uint16_t value)
 
 uint16_t RobStride_Motor_FloatToUint16(float value, float min_value, float max_value)
 {
-    float clamped = robstride_clampf(value, min_value, max_value);
+    float clamped = App_Math_ClampFloat(value, min_value, max_value);
 
     if (max_value <= min_value) {
         return 0U;

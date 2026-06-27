@@ -31,6 +31,7 @@
 - `Application/Inc/robstride_motor.h` 和 `Application/Src/robstride_motor.c`：RobStride/EDULITE 私有协议层，负责扩展帧 ID、运控帧和反馈解析。
 - `Application/Inc/robstride_motor_task.h` 和 `Application/Src/robstride_motor_task.c`：RobStride/EDULITE RTOS 调试任务和 Watch 入口。
 - `Application/Inc/pid.h` 和 `Application/Src/pid.c`：增量式 PID 和位置式 PID，使用真实 `dt_s`。
+- `Application/Inc/app_math.h`：应用层通用数学小工具，目前提供 `App_Math_ClampFloat()`，供 PID、DJI 和 RobStride 协议层复用。
 - `tests/pc/test_dji_motor_control.c`：PC 侧回归测试，覆盖 PID、反馈解析、电流换算、控制帧打包和任务纯逻辑。
 - `tests/pc/test_robstride_motor_control.c`：RobStride/EDULITE PC 侧协议回归测试。
 - `.vscode/tasks.json`：VS Code 任务，包含 PC 测试和 Keil 构建入口。
@@ -142,6 +143,7 @@ g_robstride_motor_debug
 - PID 使用真实 `dt_s`：速度环 `0.001f`，位置环 `0.01f`。
 - PID 参数单位和输出单位直接对应调试变量，不做隐藏 x10/x100 缩放。
 - 当前默认参数偏保守，目标是安全起转和方便调试，不追求开箱高速响应。
+- 通用 float 钳位函数位于 `Application/Inc/app_math.h`，语义保持简单：小于下限返回下限，大于上限返回上限，否则返回原值；不要在无测试覆盖时改变 `NaN` 或 `min > max` 行为。
 
 ## RobStride / EDULITE 05 协议
 
@@ -220,7 +222,8 @@ compiling robstride_motor_task.c...
 5. 需要改 DJI 协议解析或电流换算时，查看 `Application/Src/dji_motor.c`。
 6. 需要改 RobStride/EDULITE 协议时，查看 `Application/Src/robstride_motor.c`。
 7. 需要改 PID 行为时，查看 `Application/Src/pid.c` 并同步更新 PC 测试。
-8. 完成修改后至少运行 PC 回归测试；涉及 Keil 工程、嵌入式编译或源文件增删改名时，再运行 Keil 构建。
+8. 需要复用小型数学工具时，优先查看 `Application/Inc/app_math.h`，避免在各协议或控制模块里重复实现。
+9. 完成修改后至少运行 PC 回归测试；涉及 Keil 工程、嵌入式编译或源文件增删改名时，再运行 Keil 构建。
 9. 只有用户明确要求时才提交，并按中文详细提交信息规则执行。
 
 ## Keil 源文件重命名易错点
