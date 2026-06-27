@@ -30,9 +30,10 @@
 - `Application/Inc/dji_motor_task_logic.h` 和 `Application/Src/dji_motor_task_logic.c`：任务纯控制逻辑，供生产任务和 PC 测试共用。
 - `Application/Inc/robstride_motor.h` 和 `Application/Src/robstride_motor.c`：RobStride/EDULITE 私有协议层，负责扩展帧 ID、运控帧和反馈解析。
 - `Application/Inc/robstride_motor_task.h` 和 `Application/Src/robstride_motor_task.c`：RobStride/EDULITE RTOS 调试任务和 Watch 入口。
-- `Application/Inc/pid.h` 和 `Application/Src/pid.c`：增量式 PID 和位置式 PID，使用真实 `dt_s`。
+- `Application/Inc/pid.h`、`Application/Inc/pid_config.h` 和 `Application/Src/pid.c`：增量式 PID 固定基础版，位置式 PID 支持 basic/advanced 编译期裁剪。
 - `Application/Inc/app_math.h`：应用层通用数学小工具，目前提供 `App_Math_ClampFloat()`，供 PID、DJI 和 RobStride 协议层复用。
 - `tests/pc/test_dji_motor_control.c`：PC 侧回归测试，覆盖 PID、反馈解析、电流换算、控制帧打包和任务纯逻辑。
+- `tests/pc/test_pid_advanced_control.c`：Advanced PID PC 侧回归测试，覆盖积分限幅、抗积分饱和、微分抗冲击、微分滤波和 reset。
 - `tests/pc/test_robstride_motor_control.c`：RobStride/EDULITE PC 侧协议回归测试。
 - `.vscode/tasks.json`：VS Code 任务，包含 PC 测试和 Keil 构建入口。
 
@@ -143,6 +144,11 @@ g_robstride_motor_debug
 - PID 使用真实 `dt_s`：速度环 `0.001f`，位置环 `0.01f`。
 - PID 参数单位和输出单位直接对应调试变量，不做隐藏 x10/x100 缩放。
 - 当前默认参数偏保守，目标是安全起转和方便调试，不追求开箱高速响应。
+- 增量式 PID 只有基础版；速度环参数类型为 `PID_Incremental_Param_Config`。
+- 位置式 PID 版本由 `Application/Inc/pid_config.h` 的 `PID_POSITION_CONFIG_VARIANT` 编译期选择，默认 `PID_POSITION_VARIANT_BASIC`。
+- Basic 位置式 PID 保留基础 P/I/D、deadband 和输出限幅；`I_Outlimit` / `isIOutlimit` 在 Basic 编译配置下不存在。
+- Advanced 位置式 PID 启用积分限幅、反向计算抗积分饱和、D 项设定值加权、对测量值求导和一阶微分滤波；`I_Outlimit`、`isIOutlimit`、`setpoint_weight_b`、`setpoint_weight_c`、`derivative_filter_N`、`anti_windup_gain` 只在 Advanced 编译配置下存在。
+- 默认 Basic 固件的 Keil Watch 中不会看到位置环积分限幅字段；需要调积分限幅或抗饱和时，先切换 `PID_POSITION_CONFIG_VARIANT` 到 `PID_POSITION_VARIANT_ADVANCED` 并重新编译。
 - 通用 float 钳位函数位于 `Application/Inc/app_math.h`，语义保持简单：小于下限返回下限，大于上限返回上限，否则返回原值；不要在无测试覆盖时改变 `NaN` 或 `min > max` 行为。
 
 ## RobStride / EDULITE 05 协议
@@ -168,6 +174,13 @@ RobStride PC 回归测试：
 ```powershell
 gcc -std=c99 -Wall -Wextra -ICore/Inc -IApplication/Inc tests/pc/test_robstride_motor_control.c Application/Src/robstride_motor.c -o tests/pc/test_robstride_motor_control.exe
 .\tests\pc\test_robstride_motor_control.exe
+```
+
+Advanced PID PC 回归测试：
+
+```powershell
+gcc -std=c99 -Wall -Wextra -DPID_POSITION_CONFIG_VARIANT=PID_POSITION_VARIANT_ADVANCED -ICore/Inc -IApplication/Inc tests/pc/test_pid_advanced_control.c Application/Src/pid.c -o tests/pc/test_pid_advanced_control.exe
+.\tests\pc\test_pid_advanced_control.exe
 ```
 
 期望结果：
@@ -221,10 +234,10 @@ compiling robstride_motor_task.c...
 4. 需要改 DJI 控制任务时，优先查看 `Application/Src/dji_motor_task.c` 和 `Application/Src/dji_motor_task_logic.c`。
 5. 需要改 DJI 协议解析或电流换算时，查看 `Application/Src/dji_motor.c`。
 6. 需要改 RobStride/EDULITE 协议时，查看 `Application/Src/robstride_motor.c`。
-7. 需要改 PID 行为时，查看 `Application/Src/pid.c` 并同步更新 PC 测试。
+7. 需要改 PID 行为时，查看 `Application/Inc/pid_config.h`、`Application/Inc/pid.h`、`Application/Src/pid.c`，并同步更新 Basic 和 Advanced PC 测试。
 8. 需要复用小型数学工具时，优先查看 `Application/Inc/app_math.h`，避免在各协议或控制模块里重复实现。
 9. 完成修改后至少运行 PC 回归测试；涉及 Keil 工程、嵌入式编译或源文件增删改名时，再运行 Keil 构建。
-9. 只有用户明确要求时才提交，并按中文详细提交信息规则执行。
+10. 只有用户明确要求时才提交，并按中文详细提交信息规则执行。
 
 ## Keil 源文件重命名易错点
 

@@ -46,12 +46,10 @@ static void expect_u32(const char *name, uint32_t actual, uint32_t expected)
 static void test_incremental_pid_uses_real_dt(void)
 {
     PID_Incremental pid;
-    PID_Param_Config params = {
+    PID_Incremental_Param_Config params = {
         .kp = 0.004f,
         .ki = 0.35f,
         .kd = 0.0f,
-        .I_Outlimit = 1.5f,
-        .isIOutlimit = true,
         .output_limit = 2.0f,
         .deadband = 3.0f,
     };
@@ -65,15 +63,29 @@ static void test_incremental_pid_uses_real_dt(void)
     expect_near("speed reset clears output", pid.output, 0.0f, 0.0001f);
 }
 
+static void test_basic_pid_accumulates_integral(void)
+{
+    PID_Position pid;
+    PID_Position_Param_Config params = {
+        .kp = 0.0f,
+        .ki = 1.0f,
+        .kd = 0.0f,
+        .output_limit = 0.0f,
+        .deadband = 0.0f,
+    };
+
+    PID_Position_Init(&pid, &params, 1.0f);
+    expect_near("basic integral first step", PID_Position_Calc(&pid, 2.0f, 0.0f), 2.0f, 0.0001f);
+    expect_near("basic integral continues accumulating", PID_Position_Calc(&pid, 2.0f, 0.0f), 4.0f, 0.0001f);
+}
+
 static void test_position_pid_uses_real_dt(void)
 {
     PID_Position pid;
-    PID_Param_Config params = {
+    PID_Position_Param_Config params = {
         .kp = 1.5f,
         .ki = 0.0f,
         .kd = 0.0f,
-        .I_Outlimit = 0.0f,
-        .isIOutlimit = true,
         .output_limit = 120.0f,
         .deadband = 1.0f,
     };
@@ -206,15 +218,11 @@ static DJI_Motor_Debug make_debug_with_default_pid(void)
     debug.speed_pid_params.kp = 0.004f;
     debug.speed_pid_params.ki = 0.35f;
     debug.speed_pid_params.kd = 0.0f;
-    debug.speed_pid_params.I_Outlimit = 1.5f;
-    debug.speed_pid_params.isIOutlimit = true;
     debug.speed_pid_params.output_limit = 2.0f;
     debug.speed_pid_params.deadband = 3.0f;
     debug.angle_pid_params.kp = 1.5f;
     debug.angle_pid_params.ki = 0.0f;
     debug.angle_pid_params.kd = 0.0f;
-    debug.angle_pid_params.I_Outlimit = 0.0f;
-    debug.angle_pid_params.isIOutlimit = true;
     debug.angle_pid_params.output_limit = 120.0f;
     debug.angle_pid_params.deadband = 1.0f;
     return debug;
@@ -262,6 +270,7 @@ static void test_task_control_modes(void)
 int main(void)
 {
     test_incremental_pid_uses_real_dt();
+    test_basic_pid_accumulates_integral();
     test_position_pid_uses_real_dt();
     test_dji_feedback_and_current_conversion();
     test_dji_pack_slot_one();

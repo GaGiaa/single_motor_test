@@ -36,8 +36,6 @@ DJI_Motor_Debug g_dji_motor_debug = {
         .kp = 0.004f,
         .ki = (DJI_DEBUG_MOTOR_TYPE == DJI_MOTOR_TYPE_M3508) ? 0.20f : 0.35f,
         .kd = 0.0f,
-        .I_Outlimit = (DJI_DEBUG_MOTOR_TYPE == DJI_MOTOR_TYPE_M3508) ? 1.0f : 1.5f,
-        .isIOutlimit = true,
         .output_limit = (DJI_DEBUG_MOTOR_TYPE == DJI_MOTOR_TYPE_M3508) ? 1.5f : 2.0f,
         .deadband = 3.0f,
     },
@@ -45,8 +43,10 @@ DJI_Motor_Debug g_dji_motor_debug = {
         .kp = 1.5f,
         .ki = 0.0f,
         .kd = 0.0f,
+#if (PID_POSITION_CONFIG_VARIANT == PID_POSITION_VARIANT_ADVANCED)
         .I_Outlimit = 0.0f,
         .isIOutlimit = true,
+#endif
         .output_limit = (DJI_DEBUG_MOTOR_TYPE == DJI_MOTOR_TYPE_M3508) ? 90.0f : 120.0f,
         .deadband = 1.0f,
     },
