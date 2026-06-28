@@ -30,7 +30,9 @@
   "C_Cpp.default.defines": [
     "USE_PWR_LDO_SUPPLY",
     "USE_HAL_DRIVER",
-    "STM32H723xx"
+    "STM32H723xx",
+    "APP_DSP_ENABLE_CMSIS_DSP=1U",
+    "ARM_MATH_CM7"
   ],
   "C_Cpp.default.intelliSenseMode": "windows-clang-arm64",
   "C_Cpp.errorSquiggles": "enabled"

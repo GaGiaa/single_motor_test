@@ -1,6 +1,8 @@
 ﻿#include "dji_motor_task.h"
 
 #include "cmsis_os.h"
+#include "app_time_profiler.h"
+#include "app_dsp.h"
 #include "dji_motor_debug_config.h"
 #include "dji_motor_task_logic.h"
 #include "fdcan.h"
@@ -32,6 +34,12 @@ DJI_Motor_Debug g_dji_motor_debug = {
     .rx_count = 0U,
     .tx_count = 0U,
     .error_count = 0U,
+    .dsp_cmsis_enabled = false,
+    .dsp_build_flags = 0U,
+    .time_profiler_enabled = false,
+    .last_loop_us = 0U,
+    .max_loop_us = 0U,
+    .avg_loop_us = 0U,
     .speed_pid_params = {
         .kp = 0.004f,
         .ki = (DJI_DEBUG_MOTOR_TYPE == DJI_MOTOR_TYPE_M3508) ? 0.20f : 0.35f,
@@ -65,6 +73,7 @@ static const DJI_Motor_Config s_dji_motor_config = {
 static DJI_Motor_State s_dji_motor_state;
 static PID_Incremental s_dji_motor_speed_pid;
 static PID_Position s_dji_motor_angle_pid;
+static App_TimeProfiler_Stats s_dji_motor_loop_time;
 
 static FDCAN_HandleTypeDef *DJI_Motor_GetConfiguredCan(void)
 {
@@ -100,6 +109,16 @@ static void DJI_Motor_UpdateDebugConfig(void)
     g_dji_motor_debug.feedback_can_id = s_dji_motor_config.feedback_id;
     g_dji_motor_debug.control_can_id = s_dji_motor_config.control_id;
     g_dji_motor_debug.control_slot = s_dji_motor_config.control_slot;
+    g_dji_motor_debug.dsp_cmsis_enabled = App_DSP_IsCmsisEnabled();
+    g_dji_motor_debug.dsp_build_flags = App_DSP_GetBuildFlags();
+}
+
+static void DJI_Motor_UpdateDebugPerf(void)
+{
+    g_dji_motor_debug.time_profiler_enabled = s_dji_motor_loop_time.enabled;
+    g_dji_motor_debug.last_loop_us = s_dji_motor_loop_time.last_us;
+    g_dji_motor_debug.max_loop_us = s_dji_motor_loop_time.max_us;
+    g_dji_motor_debug.avg_loop_us = s_dji_motor_loop_time.avg_us;
 }
 
 static void DJI_Motor_UpdateDebugFeedback(void)
@@ -209,9 +228,17 @@ void DJI_Motor_Task_Run(void *argument)
     uint32_t tick_count = 0U;
     uint32_t wake_tick = osKernelGetTickCount();
 
+    App_TimeProfiler_Init();
+    App_TimeProfiler_Reset(&s_dji_motor_loop_time);
+    DJI_Motor_UpdateDebugConfig();
+    DJI_Motor_UpdateDebugPerf();
+
     for (;;) {
+        const App_TimeProfiler_Timestamp loop_start = App_TimeProfiler_Begin();
         DJI_Motor_DrainRxFifo();
         DJI_Motor_SendCurrent(DJI_Motor_CalcCommandCurrent(tick_count));
+        App_TimeProfiler_End(&s_dji_motor_loop_time, loop_start);
+        DJI_Motor_UpdateDebugPerf();
         ++tick_count;
         osDelayUntil(wake_tick + 1U);
         wake_tick += 1U;

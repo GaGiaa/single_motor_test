@@ -32,6 +32,9 @@
 - `Application/Inc/robstride_motor_task.h` 和 `Application/Src/robstride_motor_task.c`：RobStride/EDULITE RTOS 调试任务和 Watch 入口。
 - `Application/Inc/pid.h`、`Application/Inc/pid_config.h` 和 `Application/Src/pid.c`：增量式 PID 固定基础版，位置式 PID 支持 basic/advanced 编译期裁剪。
 - `Application/Inc/app_math.h`：应用层通用数学小工具，目前提供 `App_Math_ClampFloat()`，供 PID、DJI 和 RobStride 协议层复用。
+- `Application/Inc/app_dsp.h` 和 `Application/Src/app_dsp.c`：CMSIS-DSP 可选接入薄封装，当前封装 `arm_dot_prod_f32()` 和 `arm_fir_f32()`，PC 侧保留纯 C fallback。
+- `Application/Inc/app_dsp_test_task.h` 和 `Application/Src/app_dsp_test_task.c`：低优先级 RTOS DSP 验证任务，Watch 入口为 `g_app_dsp_test_debug`。
+- `Application/Inc/app_time_profiler.h` 和 `Application/Src/app_time_profiler.c`：RTOS tick + SysTick 时间戳耗时统计封装，用于板上观察任务循环执行时间。
 - `tests/pc/test_dji_motor_control.c`：PC 侧回归测试，覆盖 PID、反馈解析、电流换算、控制帧打包和任务纯逻辑。
 - `tests/pc/test_pid_advanced_control.c`：Advanced PID PC 侧回归测试，覆盖积分限幅、积分分离、抗积分饱和、微分抗冲击、微分滤波、输出低通和 reset。
 - `tests/pc/test_robstride_motor_control.c`：RobStride/EDULITE PC 侧协议回归测试。
@@ -109,6 +112,8 @@ g_dji_motor_debug
 - `configured_can_channel`、`configured_motor_id`、`configured_motor_type`：只读配置回显。
 - `feedback_can_id`、`control_can_id`、`control_slot`：只读协议派生值。
 - `rx_count`、`tx_count`、`error_count`：CAN 收发和错误计数。
+- `dsp_cmsis_enabled`、`dsp_build_flags`：只读 DSP 编译配置回显；`dsp_build_flags` bit0 表示 CMSIS-DSP 接入宏启用，bit1 表示 `ARM_MATH_CM7`。
+- `time_profiler_enabled`、`last_loop_us`、`max_loop_us`、`avg_loop_us`：只读任务循环耗时统计，单位 us。
 - `speed_pid_params`：速度环 PID 参数，运行时可在 Watch 中调节。
 - `angle_pid_params`：位置环 PID 参数，运行时可在 Watch 中调节。
 
@@ -128,6 +133,22 @@ g_robstride_motor_debug
 - `feedback_position_rad`、`feedback_velocity_rad_s`、`feedback_torque_Nm`、`feedback_temperature_c`：Type 2 反馈。
 - `mode_state`、`fault_code`：从 Type 2 扩展 ID 解析出的模式和故障字段。
 - `last_rx_can_id`、`last_tx_can_id`：最近一次收发扩展帧 ID。
+- `dsp_cmsis_enabled`、`dsp_build_flags`：只读 DSP 编译配置回显；`dsp_build_flags` bit0 表示 CMSIS-DSP 接入宏启用，bit1 表示 `ARM_MATH_CM7`。
+- `time_profiler_enabled`、`last_loop_us`、`max_loop_us`、`avg_loop_us`：只读任务循环耗时统计，单位 us。
+
+### DSP 验证 Watch
+
+```c
+g_app_dsp_test_debug
+```
+
+- `enable`：默认开启；置 0 可暂停低频 DSP 自检任务。
+- `run_count`、`pass_count`、`fail_count`：DSP 自检运行和结果计数。
+- `last_dot_result`、`expected_dot_result`：`App_DSP_DotProductF32()` 固定向量点积验证。
+- `last_fir_output`、`expected_fir_output`：`App_DSP_FIRF32()` 固定 FIR 输出验证。
+- `last_error`：点积和 FIR 两项中的最大误差。
+- `last_run_us`、`max_run_us`：单次 DSP 自检耗时，单位 us。
+- `dsp_cmsis_enabled`、`dsp_build_flags`：只读 DSP 编译配置回显。
 
 推荐首次上电调试顺序：
 
@@ -153,6 +174,19 @@ g_robstride_motor_debug
 - `output_filter_N > 0` 时启用输出级一阶低通，作用在输出限幅和抗饱和之后的最终输出上。
 - 默认 Basic 固件的 Keil Watch 中不会看到位置环积分限幅字段；需要调积分限幅或抗饱和时，先切换 `PID_POSITION_CONFIG_VARIANT` 到 `PID_POSITION_VARIANT_ADVANCED` 并重新编译。
 - 通用 float 钳位函数位于 `Application/Inc/app_math.h`，语义保持简单：小于下限返回下限，大于上限返回上限，否则返回原值；不要在无测试覆盖时改变 `NaN` 或 `min > max` 行为。
+
+## CMSIS-DSP 和性能观测
+
+- Keil 工程已经包含 `../Middlewares/ST/ARM/DSP/Inc`，并在 C 编译宏中定义 `APP_DSP_ENABLE_CMSIS_DSP=1U` 和 `ARM_MATH_CM7`。
+- 已按 CubeMX GUI 执行过 Generate Code；`.ioc` 中 X-CUBE-ALGOBUILD DSP Library 保持启用。
+- CubeMX 生成的 X-CUBE 中间件根目录只自动放入 DSP 头文件。当前最小验证所需的 CMSIS-DSP V1.10.0 头文件和 `arm_dot_prod_f32.c`、`arm_fir_f32.c`、`arm_fir_init_f32.c` 来自同一个 `C:\Users\ayou\STM32Cube\Repository\Packs\STMicroelectronics\X-CUBE-ALGOBUILD\1.4.0` 示例工程，避免头/源码版本混用。
+- `app_dsp` 隔离 `arm_math.h` 依赖，当前真实调用 `arm_dot_prod_f32()` 和 `arm_fir_f32()`；PC 测试默认 `APP_DSP_ENABLE_CMSIS_DSP=0`，不依赖 STM32/CMSIS-DSP 头文件。
+- `app_dsp_test_task` 是独立低优先级 RTOS 验证任务，10Hz 固定数据测试点积和 FIR，方便后续板上 Watch 验证 CMSIS-DSP 链接和运行。
+- 当前 PID、钳位和协议换算仍保持手写标量实现；CMSIS-DSP 优先留给后续 IMU、矩阵、批量滤波、FFT 或多电机批量向量计算。
+- `app_time_profiler` 在 STM32H723 Keil 目标默认启用，ms 来源为 RTOS tick `osKernelGetTickCount()`，us 细分来源为当前 `SysTick->VAL` 和 `SysTick->LOAD`，通过两次时间戳做差得到执行耗时。
+- 当前工程 HAL time base 是 TIM6，`HAL_IncTick()` 由 TIM6 回调驱动；任务耗时统计不使用 HAL tick，也不使用 DWT/SWO/CYCCNT。
+- PC 侧 `app_time_profiler` 默认禁用，避免 PC 测试依赖 RTOS 或 STM32 SysTick 寄存器。
+- `Core/Inc/FreeRTOSConfig.h` 中 `configENABLE_FPU` 当前仍为 `0`。如果后续要在多个 FreeRTOS 任务里大量使用浮点或 CMSIS-DSP，需要单独验证 FPU 上下文保存策略，不要把它和算法替换混在一次改动里。
 
 ## RobStride / EDULITE 05 协议
 
@@ -208,6 +242,8 @@ MDK-ARM\single_motor_test\single_motor_test.build_log.htm
 
 ```text
 compiling dji_motor_task_logic.c...
+compiling app_dsp.c...
+compiling app_time_profiler.c...
 compiling dji_motor_task.c...
 compiling robstride_motor.c...
 compiling robstride_motor_task.c...
@@ -225,7 +261,7 @@ compiling robstride_motor_task.c...
 
 - `MDK-ARM/single_motor_test.uvprojx` 中的 `<uAC6>1</uAC6>` 很重要。当前 FreeRTOS port 使用 clang/GCC 风格内联汇编，改回 ARMCC5 会导致 `portmacro.h` 编译失败。
 - `MDK-ARM/EventRecorderStub.scvd`、`MDK-ARM/single_motor_test/`、`MDK-ARM/startup_stm32h723xx.lst`、`tests/pc/test_dji_motor_control.exe`、`tests/pc/test_robstride_motor_control.exe` 是可再生成产物，不应提交。
-- 如果重新用 CubeMX 生成代码，要重点检查用户代码区是否保留，以及 `pid.c`、`dji_motor.c`、`dji_motor_task_logic.c`、`dji_motor_task.c`、`robstride_motor.c`、`robstride_motor_task.c` 是否仍在 Keil 工程文件中。
+- 如果重新用 CubeMX 生成代码，要重点检查用户代码区是否保留，以及 `pid.c`、`app_dsp.c`、`app_time_profiler.c`、`dji_motor.c`、`dji_motor_task_logic.c`、`dji_motor_task.c`、`robstride_motor.c`、`robstride_motor_task.c` 是否仍在 Keil 工程文件中。
 - RobStride 需要 FDCAN 扩展滤波器，`fdcan.c` 中各 FDCAN 实例的 `ExtFiltersNbr` 当前为 `1`。
 - 如果 CAN 没有反馈，优先检查物理 CAN 线、终端电阻、电调 ID、当前 `DJI_DEBUG_CAN_CHANNEL` 对应的 FDCAN 引脚和滤波器反馈 ID。
 
@@ -239,8 +275,9 @@ compiling robstride_motor_task.c...
 6. 需要改 RobStride/EDULITE 协议时，查看 `Application/Src/robstride_motor.c`。
 7. 需要改 PID 行为时，查看 `Application/Inc/pid_config.h`、`Application/Inc/pid.h`、`Application/Src/pid.c`，并同步更新 Basic 和 Advanced PC 测试。
 8. 需要复用小型数学工具时，优先查看 `Application/Inc/app_math.h`，避免在各协议或控制模块里重复实现。
-9. 完成修改后至少运行 PC 回归测试；涉及 Keil 工程、嵌入式编译或源文件增删改名时，再运行 Keil 构建。
-10. 只有用户明确要求时才提交，并按中文详细提交信息规则执行。
+9. 需要检查 CMSIS-DSP 或板上周期统计时，查看 `Application/Inc/app_dsp.h`、`Application/Src/app_dsp.c`、`Application/Inc/app_time_profiler.h`、`Application/Src/app_time_profiler.c`。
+10. 完成修改后至少运行 PC 回归测试；涉及 Keil 工程、嵌入式编译或源文件增删改名时，再运行 Keil 构建。
+11. 只有用户明确要求时才提交，并按中文详细提交信息规则执行。
 
 ## Keil 源文件重命名易错点
 

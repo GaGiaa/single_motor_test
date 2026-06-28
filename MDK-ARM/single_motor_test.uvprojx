@@ -338,7 +338,7 @@
             <v6Rtti>0</v6Rtti>
             <VariousControls>
               <MiscControls></MiscControls>
-              <Define>USE_PWR_LDO_SUPPLY,USE_HAL_DRIVER,STM32H723xx</Define>
+              <Define>USE_PWR_LDO_SUPPLY,USE_HAL_DRIVER,STM32H723xx,APP_DSP_ENABLE_CMSIS_DSP=1U,ARM_MATH_CM7</Define>
               <Undefine></Undefine>
               <IncludePath>../Core/Inc;../Application/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc;../Drivers/STM32H7xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Drivers/CMSIS/Device/ST/STM32H7xx/Include;../Drivers/CMSIS/Include;../Middlewares/ST/ARM/DSP/Inc</IncludePath>
             </VariousControls>
@@ -443,6 +443,36 @@
               <FileName>pid.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Application/Src/pid.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_dsp.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Application/Src/app_dsp.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_time_profiler.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Application/Src/app_time_profiler.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_dsp_test_task.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Application/Src/app_dsp_test_task.c</FilePath>
+            </File>
+            <File>
+              <FileName>arm_dot_prod_f32.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Middlewares/ST/ARM/DSP/Source/BasicMathFunctions/arm_dot_prod_f32.c</FilePath>
+            </File>
+            <File>
+              <FileName>arm_fir_f32.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Middlewares/ST/ARM/DSP/Source/FilteringFunctions/arm_fir_f32.c</FilePath>
+            </File>
+            <File>
+              <FileName>arm_fir_init_f32.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Middlewares/ST/ARM/DSP/Source/FilteringFunctions/arm_fir_init_f32.c</FilePath>
             </File>
             <File>
               <FileName>dji_motor.c</FileName>

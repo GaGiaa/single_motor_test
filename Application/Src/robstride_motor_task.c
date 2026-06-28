@@ -1,5 +1,7 @@
-#include "robstride_motor_task.h"
+﻿#include "robstride_motor_task.h"
 
+#include "app_time_profiler.h"
+#include "app_dsp.h"
 #include "cmsis_os.h"
 #include "fdcan.h"
 #include "robstride_motor_debug_config.h"
@@ -30,6 +32,12 @@ RobStride_Motor_Debug g_robstride_motor_debug = {
     .rx_count = 0U,
     .tx_count = 0U,
     .error_count = 0U,
+    .dsp_cmsis_enabled = false,
+    .dsp_build_flags = 0U,
+    .time_profiler_enabled = false,
+    .last_loop_us = 0U,
+    .max_loop_us = 0U,
+    .avg_loop_us = 0U,
 };
 
 static const RobStride_Motor_Config s_robstride_motor_config = {
@@ -51,6 +59,7 @@ static const RobStride_Motor_Config s_robstride_motor_config = {
 };
 
 static RobStride_Motor_State s_robstride_motor_state;
+static App_TimeProfiler_Stats s_robstride_motor_loop_time;
 
 static FDCAN_HandleTypeDef *RobStride_Motor_GetConfiguredCan(void)
 {
@@ -69,6 +78,16 @@ static void RobStride_Motor_UpdateDebugConfig(void)
     g_robstride_motor_debug.configured_motor_id = s_robstride_motor_config.motor_id;
     g_robstride_motor_debug.configured_host_can_id = s_robstride_motor_config.host_can_id;
     g_robstride_motor_debug.configured_motor_type = s_robstride_motor_config.motor_type;
+    g_robstride_motor_debug.dsp_cmsis_enabled = App_DSP_IsCmsisEnabled();
+    g_robstride_motor_debug.dsp_build_flags = App_DSP_GetBuildFlags();
+}
+
+static void RobStride_Motor_UpdateDebugPerf(void)
+{
+    g_robstride_motor_debug.time_profiler_enabled = s_robstride_motor_loop_time.enabled;
+    g_robstride_motor_debug.last_loop_us = s_robstride_motor_loop_time.last_us;
+    g_robstride_motor_debug.max_loop_us = s_robstride_motor_loop_time.max_us;
+    g_robstride_motor_debug.avg_loop_us = s_robstride_motor_loop_time.avg_us;
 }
 
 static void RobStride_Motor_UpdateDebugFeedback(void)
@@ -205,6 +224,10 @@ void RobStride_Motor_Task_Run(void *argument)
 
     RobStride_Motor_UpdateDebugConfig();
     RobStride_Motor_Init(&s_robstride_motor_state, &s_robstride_motor_config);
+    App_TimeProfiler_Init();
+    App_TimeProfiler_Reset(&s_robstride_motor_loop_time);
+    RobStride_Motor_UpdateDebugConfig();
+    RobStride_Motor_UpdateDebugPerf();
 
     if (RobStride_Motor_CAN_Start() != HAL_OK) {
         ++g_robstride_motor_debug.error_count;
@@ -212,8 +235,11 @@ void RobStride_Motor_Task_Run(void *argument)
 
     wake_tick = osKernelGetTickCount();
     for (;;) {
+        const App_TimeProfiler_Timestamp loop_start = App_TimeProfiler_Begin();
         RobStride_Motor_DrainRxFifo();
         RobStride_Motor_RunControlStep(&last_enable);
+        App_TimeProfiler_End(&s_robstride_motor_loop_time, loop_start);
+        RobStride_Motor_UpdateDebugPerf();
         osDelayUntil(wake_tick + 1U);
         wake_tick += 1U;
     }
