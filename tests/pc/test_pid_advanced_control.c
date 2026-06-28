@@ -28,13 +28,14 @@ static PID_Position_Param_Config make_advanced_params(void)
         .ki = 0.0f,
         .kd = 0.0f,
         .I_Outlimit = 0.0f,
-        .isIOutlimit = false,
         .output_limit = 0.0f,
         .deadband = 0.0f,
         .setpoint_weight_b = 1.0f,
         .setpoint_weight_c = 0.0f,
         .derivative_filter_N = 10.0f,
         .anti_windup_gain = 1.0f,
+        .integral_separation_threshold = 0.0f,
+        .output_filter_N = 0.0f,
     };
 
     return params;
@@ -47,11 +48,23 @@ static void test_advanced_integral_limit(void)
 
     params.ki = 1.0f;
     params.I_Outlimit = 0.5f;
-    params.isIOutlimit = true;
 
     PID_Position_Init(&pid, &params, 1.0f);
     expect_near("advanced integral limit output", PID_Position_Calc(&pid, 2.0f, 0.0f), 0.5f, 0.0001f);
     expect_near("advanced integral state limited", pid.integral, 0.5f, 0.0001f);
+}
+
+static void test_advanced_integral_limit_zero_disables_clamp(void)
+{
+    PID_Position pid;
+    PID_Position_Param_Config params = make_advanced_params();
+
+    params.ki = 1.0f;
+    params.I_Outlimit = 0.0f;
+
+    PID_Position_Init(&pid, &params, 1.0f);
+    expect_near("advanced zero integral limit disables clamp output", PID_Position_Calc(&pid, 2.0f, 0.0f), 2.0f, 0.0001f);
+    expect_near("advanced zero integral limit disables clamp state", pid.integral, 2.0f, 0.0001f);
 }
 
 static void test_advanced_anti_windup_reduces_integral(void)
@@ -97,6 +110,50 @@ static void test_advanced_derivative_filters_feedback_step(void)
     expect_true("advanced derivative filter reduces raw spike", pid.d_out > -1000.0f && pid.d_out < 0.0f);
 }
 
+static void test_advanced_integral_separation_pauses_and_resumes(void)
+{
+    PID_Position pid;
+    PID_Position_Param_Config params = make_advanced_params();
+
+    params.ki = 1.0f;
+    params.integral_separation_threshold = 5.0f;
+
+    PID_Position_Init(&pid, &params, 1.0f);
+    expect_near("advanced integral separation pauses", PID_Position_Calc(&pid, 10.0f, 0.0f), 0.0f, 0.0001f);
+    expect_near("advanced integral remains zero while separated", pid.integral, 0.0f, 0.0001f);
+    expect_near("advanced integral resumes inside threshold", PID_Position_Calc(&pid, 2.0f, 0.0f), 2.0f, 0.0001f);
+    expect_near("advanced integral state resumes", pid.integral, 2.0f, 0.0001f);
+}
+
+static void test_advanced_integral_separation_preserves_existing_integral(void)
+{
+    PID_Position pid;
+    PID_Position_Param_Config params = make_advanced_params();
+
+    params.ki = 1.0f;
+    params.integral_separation_threshold = 5.0f;
+
+    PID_Position_Init(&pid, &params, 1.0f);
+    (void)PID_Position_Calc(&pid, 2.0f, 0.0f);
+    expect_near("advanced integral before separation", pid.integral, 2.0f, 0.0001f);
+    expect_near("advanced separated output keeps existing integral", PID_Position_Calc(&pid, 10.0f, 0.0f), 2.0f, 0.0001f);
+    expect_near("advanced separation does not clear integral", pid.integral, 2.0f, 0.0001f);
+}
+
+static void test_advanced_output_filter_smooths_step(void)
+{
+    PID_Position pid;
+    PID_Position_Param_Config params = make_advanced_params();
+
+    params.kp = 1.0f;
+    params.output_filter_N = 1.0f;
+
+    PID_Position_Init(&pid, &params, 1.0f);
+    expect_near("advanced output filter first step", PID_Position_Calc(&pid, 10.0f, 0.0f), 5.0f, 0.0001f);
+    expect_near("advanced output filter approaches target", PID_Position_Calc(&pid, 10.0f, 0.0f), 7.5f, 0.0001f);
+    expect_near("advanced filtered output state", pid.filtered_output, 7.5f, 0.0001f);
+}
+
 static void test_advanced_reset_clears_added_state(void)
 {
     PID_Position pid;
@@ -111,6 +168,7 @@ static void test_advanced_reset_clears_added_state(void)
 
     expect_near("advanced reset integral", pid.integral, 0.0f, 0.0001f);
     expect_near("advanced reset derivative", pid.filtered_derivative, 0.0f, 0.0001f);
+    expect_near("advanced reset output filter", pid.filtered_output, 0.0f, 0.0001f);
     expect_near("advanced reset output", pid.output, 0.0f, 0.0001f);
     expect_true("advanced reset sample flag", !pid.has_last_sample);
 }
@@ -118,9 +176,13 @@ static void test_advanced_reset_clears_added_state(void)
 int main(void)
 {
     test_advanced_integral_limit();
+    test_advanced_integral_limit_zero_disables_clamp();
     test_advanced_anti_windup_reduces_integral();
     test_advanced_derivative_avoids_setpoint_kick();
     test_advanced_derivative_filters_feedback_step();
+    test_advanced_integral_separation_pauses_and_resumes();
+    test_advanced_integral_separation_preserves_existing_integral();
+    test_advanced_output_filter_smooths_step();
     test_advanced_reset_clears_added_state();
 
     if (g_failures != 0) {

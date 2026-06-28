@@ -45,7 +45,6 @@ DJI_Motor_Debug g_dji_motor_debug = {
         .kd = 0.0f,
 #if (PID_POSITION_CONFIG_VARIANT == PID_POSITION_VARIANT_ADVANCED)
         .I_Outlimit = 0.0f,
-        .isIOutlimit = true,
 #endif
         .output_limit = (DJI_DEBUG_MOTOR_TYPE == DJI_MOTOR_TYPE_M3508) ? 90.0f : 120.0f,
         .deadband = 1.0f,

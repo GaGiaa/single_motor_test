@@ -20,12 +20,12 @@ static float pid_param_or_default(float value, float default_value)
     return isfinite(value) && value > 0.0f ? value : default_value;
 }
 
-static float pid_filter_derivative(float previous, float raw, float n, float dt_s)
+static float pid_first_order_filter(float previous, float input, float n, float dt_s)
 {
     const float filter_n = pid_param_or_default(n, 10.0f);
     const float alpha = (filter_n * dt_s) / (1.0f + filter_n * dt_s);
 
-    return previous + alpha * (raw - previous);
+    return previous + alpha * (input - previous);
 }
 #endif
 
@@ -109,6 +109,7 @@ void PID_Position_Reset(PID_Position *pid)
     pid->last_target = 0.0f;
     pid->last_feedback = 0.0f;
     pid->filtered_derivative = 0.0f;
+    pid->filtered_output = 0.0f;
     pid->has_last_sample = false;
 #endif
 }
@@ -135,13 +136,16 @@ float PID_Position_Calc(PID_Position *pid, float target, float feedback)
     if (pid->has_last_sample) {
         raw_derivative = (derivative_input - ((c * pid->last_target) - pid->last_feedback)) / pid->dt_s;
     }
-    pid->filtered_derivative = pid_filter_derivative(pid->filtered_derivative,
-                                                     raw_derivative,
-                                                     pid->params.derivative_filter_N,
-                                                     pid->dt_s);
+    pid->filtered_derivative = pid_first_order_filter(pid->filtered_derivative,
+                                                      raw_derivative,
+                                                      pid->params.derivative_filter_N,
+                                                      pid->dt_s);
 
-    pid->integral += error * pid->dt_s;
-    if (pid->params.isIOutlimit && pid_has_positive_limit(pid->params.I_Outlimit)) {
+    if (!pid_has_positive_limit(pid->params.integral_separation_threshold) ||
+        pid_absf(error) <= pid->params.integral_separation_threshold) {
+        pid->integral += error * pid->dt_s;
+    }
+    if (pid_has_positive_limit(pid->params.I_Outlimit)) {
         pid->integral = App_Math_ClampFloat(pid->integral, -pid->params.I_Outlimit, pid->params.I_Outlimit);
     }
 
@@ -154,11 +158,20 @@ float PID_Position_Calc(PID_Position *pid, float target, float feedback)
         pid->output = App_Math_ClampFloat(raw_output, -pid->params.output_limit, pid->params.output_limit);
         if (pid->params.ki != 0.0f) {
             pid->integral += anti_windup_gain * (pid->output - raw_output) / pid->params.ki * pid->dt_s;
-            if (pid->params.isIOutlimit && pid_has_positive_limit(pid->params.I_Outlimit)) {
+            if (pid_has_positive_limit(pid->params.I_Outlimit)) {
                 pid->integral = App_Math_ClampFloat(pid->integral, -pid->params.I_Outlimit, pid->params.I_Outlimit);
             }
             pid->i_out = pid->params.ki * pid->integral;
         }
+    }
+    if (pid_has_positive_limit(pid->params.output_filter_N)) {
+        pid->filtered_output = pid_first_order_filter(pid->filtered_output,
+                                                      pid->output,
+                                                      pid->params.output_filter_N,
+                                                      pid->dt_s);
+        pid->output = pid->filtered_output;
+    } else {
+        pid->filtered_output = pid->output;
     }
 
     pid->last_target = target;

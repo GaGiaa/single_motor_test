@@ -21,11 +21,12 @@ typedef struct {
     float deadband;
 #if (PID_POSITION_CONFIG_VARIANT == PID_POSITION_VARIANT_ADVANCED)
     float I_Outlimit;
-    bool isIOutlimit;
     float setpoint_weight_b;
     float setpoint_weight_c;
     float derivative_filter_N;
     float anti_windup_gain;
+    float integral_separation_threshold;
+    float output_filter_N;
 #endif
 } PID_Position_Param_Config;
 
@@ -55,6 +56,7 @@ typedef struct {
     float last_target;
     float last_feedback;
     float filtered_derivative;
+    float filtered_output;
     bool has_last_sample;
 #endif
 } PID_Position;
