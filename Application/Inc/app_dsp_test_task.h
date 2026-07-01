@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 #ifndef APP_DSP_TEST_TASK_ENABLE
-#define APP_DSP_TEST_TASK_ENABLE    (1U)
+#define APP_DSP_TEST_TASK_ENABLE    (0U)
 #endif
 
 typedef struct {
