@@ -42,8 +42,15 @@ typedef struct {
     volatile uint32_t tx_count;
     volatile uint32_t error_count;
 
-    PID_Param_Config speed_pid_params;
-    PID_Param_Config angle_pid_params;
+    volatile bool dsp_cmsis_enabled;
+    volatile uint32_t dsp_build_flags;
+    volatile bool time_profiler_enabled;
+    volatile uint32_t last_loop_us;
+    volatile uint32_t max_loop_us;
+    volatile uint32_t avg_loop_us;
+
+    PID_Incremental_Param_Config speed_pid_params;
+    PID_Position_Param_Config angle_pid_params;
 } DJI_Motor_Debug;
 
 extern DJI_Motor_Debug g_dji_motor_debug;

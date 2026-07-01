@@ -4,22 +4,35 @@
     "stm32h7xx_hal_conf.h": "c",
     "FreeRTOSConfig.h": "c"
   },
-  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
   "C_Cpp.default.compilerPath": "D:/Keil_v5/ARM/ARMCLANG/bin/armclang.exe",
+  "C_Cpp.default.compilerArgs": [
+    "--target=arm-arm-none-eabi",
+    "-mcpu=cortex-m7",
+    "-mthumb",
+    "-std=c99"
+  ],
   "C_Cpp.default.includePath": [
     "${workspaceFolder}/Core/Inc",
+    "${workspaceFolder}/Application/Inc",
     "${workspaceFolder}/Drivers/STM32H7xx_HAL_Driver/Inc",
     "${workspaceFolder}/Drivers/STM32H7xx_HAL_Driver/Inc/Legacy",
     "${workspaceFolder}/Drivers/CMSIS/Device/ST/STM32H7xx/Include",
     "${workspaceFolder}/Drivers/CMSIS/Include",
     "${workspaceFolder}/Middlewares/Third_Party/FreeRTOS/Source/include",
     "${workspaceFolder}/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2",
-    "${workspaceFolder}/Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F"
+    "${workspaceFolder}/Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F",
+    "${workspaceFolder}/Middlewares/ST/ARM/DSP/Inc"
+  ],
+  "C_Cpp.default.systemIncludePath": [
+    "D:/Keil_v5/ARM/ARMCLANG/include",
+    "D:/Keil_v5/ARM/ARMCLANG/lib/clang/20/include"
   ],
   "C_Cpp.default.defines": [
     "USE_PWR_LDO_SUPPLY",
     "USE_HAL_DRIVER",
-    "STM32H723xx"
+    "STM32H723xx",
+    "APP_DSP_ENABLE_CMSIS_DSP=1U",
+    "ARM_MATH_CM7"
   ],
   "C_Cpp.default.intelliSenseMode": "windows-clang-arm64",
   "C_Cpp.errorSquiggles": "enabled"

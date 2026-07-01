@@ -1,4 +1,4 @@
-﻿/* USER CODE BEGIN Header */
+/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * File Name          : freertos.c
@@ -25,6 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "app_dsp_test_task.h"
 #include "dji_motor_task.h"
 #include "motor_debug_config.h"
 #include "robstride_motor_task.h"
@@ -48,6 +49,14 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
+#if (APP_DSP_TEST_TASK_ENABLE != 0U)
+osThreadId_t dspTestTaskHandle;
+const osThreadAttr_t dspTestTask_attributes = {
+  .name = "dspTestTask",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+#endif
 
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
@@ -110,6 +119,9 @@ void MX_FREERTOS_Init(void) {
   defaultTaskHandle = osThreadNew(startDefaultTask, NULL, &defaultTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
+#if (APP_DSP_TEST_TASK_ENABLE != 0U)
+  dspTestTaskHandle = osThreadNew(App_DSP_Test_Task_Run, NULL, &dspTestTask_attributes);
+#endif
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
 
@@ -141,5 +153,4 @@ __weak void startDefaultTask(void *argument)
 /* USER CODE BEGIN Application */
 
 /* USER CODE END Application */
-
 

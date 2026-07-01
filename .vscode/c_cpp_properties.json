@@ -1,0 +1,41 @@
+{
+  "configurations": [
+    {
+      "name": "Keil ARMClang",
+      "compilerPath": "D:/Keil_v5/ARM/ARMCLANG/bin/armclang.exe",
+      "compilerArgs": [
+        "--target=arm-arm-none-eabi",
+        "-mcpu=cortex-m7",
+        "-mthumb",
+        "-std=c99"
+      ],
+      "intelliSenseMode": "windows-clang-arm64",
+      "cStandard": "c99",
+      "cppStandard": "c++17",
+      "includePath": [
+        "${workspaceFolder}/Core/Inc",
+        "${workspaceFolder}/Application/Inc",
+        "${workspaceFolder}/Drivers/STM32H7xx_HAL_Driver/Inc",
+        "${workspaceFolder}/Drivers/STM32H7xx_HAL_Driver/Inc/Legacy",
+        "${workspaceFolder}/Middlewares/Third_Party/FreeRTOS/Source/include",
+        "${workspaceFolder}/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2",
+        "${workspaceFolder}/Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F",
+        "${workspaceFolder}/Drivers/CMSIS/Device/ST/STM32H7xx/Include",
+        "${workspaceFolder}/Drivers/CMSIS/Include",
+        "${workspaceFolder}/Middlewares/ST/ARM/DSP/Inc"
+      ],
+      "systemIncludePath": [
+        "D:/Keil_v5/ARM/ARMCLANG/include",
+        "D:/Keil_v5/ARM/ARMCLANG/lib/clang/20/include"
+      ],
+      "defines": [
+        "USE_PWR_LDO_SUPPLY",
+        "USE_HAL_DRIVER",
+        "STM32H723xx",
+        "APP_DSP_ENABLE_CMSIS_DSP=1U",
+        "ARM_MATH_CM7"
+      ]
+    }
+  ],
+  "version": 4
+}

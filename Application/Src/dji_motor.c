@@ -1,18 +1,9 @@
 ﻿#include "dji_motor.h"
 
+#include "app_math.h"
+
 #include <stddef.h>
 #include <string.h>
-
-static float dji_clampf(float value, float min_value, float max_value)
-{
-    if (value < min_value) {
-        return min_value;
-    }
-    if (value > max_value) {
-        return max_value;
-    }
-    return value;
-}
 
 static int16_t dji_i16_from_be(const uint8_t high, const uint8_t low)
 {
@@ -108,9 +99,9 @@ int16_t DJI_Motor_CurrentAToRaw(const DJI_Motor_Config *config, float current_A)
 {
     const DJI_Motor_Config default_config = DJI_Motor_MakeConfig(DJI_MOTOR_TYPE_M2006, 1U);
     const DJI_Motor_Config *active_config = (config != NULL) ? config : &default_config;
-    const float limited_current_A = dji_clampf(current_A,
-                                               -active_config->max_current_A,
-                                               active_config->max_current_A);
+    const float limited_current_A = App_Math_ClampFloat(current_A,
+                                                        -active_config->max_current_A,
+                                                        active_config->max_current_A);
     const float raw = limited_current_A * (float)active_config->max_current_raw /
                       active_config->max_current_A;
 

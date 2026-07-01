@@ -1,4 +1,4 @@
-#ifndef ROBSTRIDE_MOTOR_TASK_H
+﻿#ifndef ROBSTRIDE_MOTOR_TASK_H
 #define ROBSTRIDE_MOTOR_TASK_H
 
 #include <stdbool.h>
@@ -34,6 +34,13 @@ typedef struct {
     volatile uint32_t rx_count;
     volatile uint32_t tx_count;
     volatile uint32_t error_count;
+
+    volatile bool dsp_cmsis_enabled;
+    volatile uint32_t dsp_build_flags;
+    volatile bool time_profiler_enabled;
+    volatile uint32_t last_loop_us;
+    volatile uint32_t max_loop_us;
+    volatile uint32_t avg_loop_us;
 } RobStride_Motor_Debug;
 
 extern RobStride_Motor_Debug g_robstride_motor_debug;

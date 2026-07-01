@@ -60,6 +60,39 @@
       "group": "test"
     },
     {
+      "label": "PC Test: Advanced PID",
+      "type": "shell",
+      "command": "gcc",
+      "args": [
+        "-std=c99",
+        "-Wall",
+        "-Wextra",
+        "-DPID_POSITION_CONFIG_VARIANT=PID_POSITION_VARIANT_ADVANCED",
+        "-ICore/Inc",
+        "-IApplication/Inc",
+        "tests/pc/test_pid_advanced_control.c",
+        "Application/Src/pid.c",
+        "-o",
+        "tests/pc/test_pid_advanced_control.exe"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": "$gcc",
+      "group": "test"
+    },
+    {
+      "label": "Run PC Test: Advanced PID",
+      "type": "shell",
+      "command": "${workspaceFolder}/tests/pc/test_pid_advanced_control.exe",
+      "dependsOn": "PC Test: Advanced PID",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
       "label": "Run PC Test: RobStride Motor Control",
       "type": "shell",
       "command": "${workspaceFolder}/tests/pc/test_robstride_motor_control.exe",
