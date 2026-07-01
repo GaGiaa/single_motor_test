@@ -12,6 +12,9 @@ RobStride_Motor_Debug g_robstride_motor_debug = {
     .enable = false,
     .clear_fault_on_disable = false,
     .set_zero_request = false,
+    .request_device_id = false,
+    .request_active_report = false,
+    .active_report_enable = true,
     .target_position_rad = 0.0f,
     .target_velocity_rad_s = 0.0f,
     .target_torque_Nm = 0.0f,
@@ -27,6 +30,31 @@ RobStride_Motor_Debug g_robstride_motor_debug = {
     .configured_motor_id = ROBSTRIDE_DEBUG_MOTOR_ID,
     .configured_host_can_id = ROBSTRIDE_DEBUG_HOST_CAN_ID,
     .configured_motor_type = ROBSTRIDE_DEBUG_MOTOR_TYPE,
+    .device_id_request_count = 0U,
+    .device_id_response_count = 0U,
+    .active_report_request_count = 0U,
+    .last_discovered_motor_id = 0U,
+    .last_device_uid = {0},
+    .last_device_id_rx_can_id = 0U,
+    .device_id_valid = false,
+    .confirm_can_id_request = false,
+    .can_id_confirm_branch_count = 0U,
+    .can_id_confirm_request_count = 0U,
+    .can_id_confirm_response_count = 0U,
+    .can_id_confirm_send_fail_count = 0U,
+    .can_id_confirm_unhandled_count = 0U,
+    .can_id_confirm_read_fail_count = 0U,
+    .last_can_id_confirm_fail_status = 0U,
+    .confirmed_motor_id = 0U,
+    .confirm_param_index = ROBSTRIDE_PARAM_CAN_ID,
+    .confirm_param_target = ROBSTRIDE_READ_PARAM_TARGET_CAN_ID,
+    .last_can_id_confirm_tx_can_id = 0U,
+    .last_can_id_confirm_rx_can_id = 0U,
+    .last_can_id_confirm_fail_rx_can_id = 0U,
+    .confirmed_motor_id_valid = false,
+    .raw_rx_count = 0U,
+    .last_unhandled_rx_can_id = 0U,
+    .last_unhandled_rx_data = {0},
     .last_rx_can_id = 0U,
     .last_tx_can_id = 0U,
     .rx_count = 0U,
@@ -78,6 +106,8 @@ static void RobStride_Motor_UpdateDebugConfig(void)
     g_robstride_motor_debug.configured_motor_id = s_robstride_motor_config.motor_id;
     g_robstride_motor_debug.configured_host_can_id = s_robstride_motor_config.host_can_id;
     g_robstride_motor_debug.configured_motor_type = s_robstride_motor_config.motor_type;
+    g_robstride_motor_debug.confirm_param_index =
+        RobStride_Motor_SelectReadableParamIndex((RobStride_ReadParam_Target)g_robstride_motor_debug.confirm_param_target);
     g_robstride_motor_debug.dsp_cmsis_enabled = App_DSP_IsCmsisEnabled();
     g_robstride_motor_debug.dsp_build_flags = App_DSP_GetBuildFlags();
 }
@@ -104,16 +134,13 @@ static HAL_StatusTypeDef RobStride_Motor_CAN_Start(void)
 {
     FDCAN_FilterTypeDef filter = {0};
     FDCAN_HandleTypeDef *hfdcan = RobStride_Motor_GetConfiguredCan();
-    const uint32_t feedback_id = RobStride_Motor_BuildCanId(ROBSTRIDE_COMM_FEEDBACK,
-                                                            (uint16_t)s_robstride_motor_config.motor_id,
-                                                            0U);
 
     filter.IdType = FDCAN_EXTENDED_ID;
     filter.FilterIndex = 0;
     filter.FilterType = FDCAN_FILTER_MASK;
     filter.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
-    filter.FilterID1 = feedback_id;
-    filter.FilterID2 = 0x1F00FFFFU;
+    filter.FilterID1 = 0U;
+    filter.FilterID2 = 0U;
 
     if (HAL_FDCAN_ConfigFilter(hfdcan, &filter) != HAL_OK) {
         return HAL_ERROR;
@@ -132,6 +159,13 @@ static void RobStride_Motor_DrainRxFifo(void)
 {
     FDCAN_RxHeaderTypeDef rx_header;
     uint8_t rx_data[8];
+    uint8_t discovered_motor_id;
+    uint8_t discovered_uid[8];
+    uint8_t confirmed_motor_id;
+    uint8_t failure_status;
+    uint16_t confirm_param_index = g_robstride_motor_debug.confirm_param_index;
+    bool confirm_pending = g_robstride_motor_debug.can_id_confirm_request_count >
+                           g_robstride_motor_debug.can_id_confirm_response_count;
     FDCAN_HandleTypeDef *hfdcan = RobStride_Motor_GetConfiguredCan();
 
     while (HAL_FDCAN_GetRxFifoFillLevel(hfdcan, FDCAN_RX_FIFO0) > 0U) {
@@ -140,24 +174,80 @@ static void RobStride_Motor_DrainRxFifo(void)
             return;
         }
 
-        if (rx_header.IdType == FDCAN_EXTENDED_ID &&
-            rx_header.DataLength == FDCAN_DLC_BYTES_8 &&
-            RobStride_Motor_UpdateFeedback(&s_robstride_motor_state, rx_header.Identifier, rx_data)) {
+        if (rx_header.IdType != FDCAN_EXTENDED_ID || rx_header.DataLength != FDCAN_DLC_BYTES_8) {
+            continue;
+        }
+
+        ++g_robstride_motor_debug.raw_rx_count;
+
+        if (RobStride_Motor_ParseDeviceIdResponse(rx_header.Identifier,
+                                                  rx_data,
+                                                  &discovered_motor_id,
+                                                  discovered_uid)) {
+            g_robstride_motor_debug.last_discovered_motor_id = discovered_motor_id;
+            for (uint8_t i = 0U; i < 8U; ++i) {
+                g_robstride_motor_debug.last_device_uid[i] = discovered_uid[i];
+            }
+            g_robstride_motor_debug.last_device_id_rx_can_id = rx_header.Identifier;
+            g_robstride_motor_debug.last_rx_can_id = rx_header.Identifier;
+            g_robstride_motor_debug.device_id_valid = true;
+            ++g_robstride_motor_debug.device_id_response_count;
+            ++g_robstride_motor_debug.rx_count;
+            continue;
+        }
+
+        if (RobStride_Motor_ParseReadSingleUint8Response(rx_header.Identifier,
+                                                         rx_data,
+                                                         confirm_param_index,
+                                                         s_robstride_motor_config.host_can_id,
+                                                         &confirmed_motor_id)) {
+            g_robstride_motor_debug.confirmed_motor_id = confirmed_motor_id;
+            g_robstride_motor_debug.last_can_id_confirm_rx_can_id = rx_header.Identifier;
+            g_robstride_motor_debug.last_rx_can_id = rx_header.Identifier;
+            g_robstride_motor_debug.confirmed_motor_id_valid = true;
+            ++g_robstride_motor_debug.can_id_confirm_response_count;
+            ++g_robstride_motor_debug.rx_count;
+            continue;
+        }
+
+        if (RobStride_Motor_ParseReadSingleParamFailure(rx_header.Identifier,
+                                                        rx_data,
+                                                        confirm_param_index,
+                                                        s_robstride_motor_config.host_can_id,
+                                                        &failure_status)) {
+            g_robstride_motor_debug.last_can_id_confirm_fail_status = failure_status;
+            g_robstride_motor_debug.last_can_id_confirm_fail_rx_can_id = rx_header.Identifier;
+            g_robstride_motor_debug.last_rx_can_id = rx_header.Identifier;
+            ++g_robstride_motor_debug.can_id_confirm_read_fail_count;
+            ++g_robstride_motor_debug.rx_count;
+            continue;
+        }
+
+        if (RobStride_Motor_UpdateFeedback(&s_robstride_motor_state, rx_header.Identifier, rx_data)) {
             g_robstride_motor_debug.last_rx_can_id = rx_header.Identifier;
             RobStride_Motor_UpdateDebugFeedback();
             ++g_robstride_motor_debug.rx_count;
+            continue;
+        }
+
+        g_robstride_motor_debug.last_unhandled_rx_can_id = rx_header.Identifier;
+        for (uint8_t i = 0U; i < 8U; ++i) {
+            g_robstride_motor_debug.last_unhandled_rx_data[i] = rx_data[i];
+        }
+        if (confirm_pending) {
+            ++g_robstride_motor_debug.can_id_confirm_unhandled_count;
         }
     }
 }
 
-static void RobStride_Motor_SendFrame(const RobStride_Motor_Frame *frame)
+static bool RobStride_Motor_SendFrame(const RobStride_Motor_Frame *frame)
 {
     FDCAN_TxHeaderTypeDef tx_header = {0};
     FDCAN_HandleTypeDef *hfdcan = RobStride_Motor_GetConfiguredCan();
 
     if (frame == NULL) {
         ++g_robstride_motor_debug.error_count;
-        return;
+        return false;
     }
 
     tx_header.Identifier = frame->can_id;
@@ -173,8 +263,10 @@ static void RobStride_Motor_SendFrame(const RobStride_Motor_Frame *frame)
     if (HAL_FDCAN_AddMessageToTxFifoQ(hfdcan, &tx_header, (uint8_t *)frame->data) == HAL_OK) {
         g_robstride_motor_debug.last_tx_can_id = frame->can_id;
         ++g_robstride_motor_debug.tx_count;
+        return true;
     } else {
         ++g_robstride_motor_debug.error_count;
+        return false;
     }
 }
 
@@ -182,10 +274,57 @@ static void RobStride_Motor_RunControlStep(bool *last_enable)
 {
     RobStride_Motor_Frame frame;
     RobStride_Motor_Command command;
+    uint16_t confirm_param_index;
+
+    g_robstride_motor_debug.confirm_param_index =
+        RobStride_Motor_SelectReadableParamIndex((RobStride_ReadParam_Target)g_robstride_motor_debug.confirm_param_target);
+    confirm_param_index = g_robstride_motor_debug.confirm_param_index;
+
+    if (g_robstride_motor_debug.request_device_id && !g_robstride_motor_debug.enable) {
+        RobStride_Motor_MakeGetDeviceIdFrame(&s_robstride_motor_config, &frame);
+        if (RobStride_Motor_SendFrame(&frame)) {
+            ++g_robstride_motor_debug.device_id_request_count;
+        }
+        g_robstride_motor_debug.request_device_id = false;
+        return;
+    }
+
+    if (g_robstride_motor_debug.request_active_report && !g_robstride_motor_debug.enable) {
+        RobStride_Motor_MakeActiveReportFrame(&s_robstride_motor_config,
+                                              g_robstride_motor_debug.active_report_enable,
+                                              &frame);
+        if (RobStride_Motor_SendFrame(&frame)) {
+            ++g_robstride_motor_debug.active_report_request_count;
+        }
+        g_robstride_motor_debug.request_active_report = false;
+        return;
+    }
+
+    if (g_robstride_motor_debug.confirm_can_id_request && g_robstride_motor_debug.enable) {
+        return;
+    }
+
+    if (g_robstride_motor_debug.confirm_can_id_request && !g_robstride_motor_debug.enable) {
+        bool send_ok;
+
+        ++g_robstride_motor_debug.can_id_confirm_branch_count;
+        RobStride_Motor_MakeReadSingleParamFrame(&s_robstride_motor_config,
+                                                 confirm_param_index,
+                                                 &frame);
+        send_ok = RobStride_Motor_SendFrame(&frame);
+        if (send_ok) {
+            ++g_robstride_motor_debug.can_id_confirm_request_count;
+            g_robstride_motor_debug.last_can_id_confirm_tx_can_id = frame.can_id;
+        } else {
+            ++g_robstride_motor_debug.can_id_confirm_send_fail_count;
+        }
+        g_robstride_motor_debug.confirm_can_id_request = false;
+        return;
+    }
 
     if (g_robstride_motor_debug.set_zero_request) {
         RobStride_Motor_MakeSetZeroFrame(&s_robstride_motor_config, &frame);
-        RobStride_Motor_SendFrame(&frame);
+        (void)RobStride_Motor_SendFrame(&frame);
         g_robstride_motor_debug.set_zero_request = false;
     }
 
@@ -193,7 +332,7 @@ static void RobStride_Motor_RunControlStep(bool *last_enable)
         RobStride_Motor_MakeDisableFrame(&s_robstride_motor_config,
                                          g_robstride_motor_debug.clear_fault_on_disable,
                                          &frame);
-        RobStride_Motor_SendFrame(&frame);
+        (void)RobStride_Motor_SendFrame(&frame);
         if (last_enable != NULL) {
             *last_enable = false;
         }
@@ -202,7 +341,7 @@ static void RobStride_Motor_RunControlStep(bool *last_enable)
 
     if (last_enable != NULL && !*last_enable) {
         RobStride_Motor_MakeEnableFrame(&s_robstride_motor_config, &frame);
-        RobStride_Motor_SendFrame(&frame);
+        (void)RobStride_Motor_SendFrame(&frame);
         *last_enable = true;
     }
 
@@ -212,7 +351,7 @@ static void RobStride_Motor_RunControlStep(bool *last_enable)
     command.kp = g_robstride_motor_debug.kp;
     command.kd = g_robstride_motor_debug.kd;
     RobStride_Motor_MakeMotionControlFrame(&s_robstride_motor_config, &command, &frame);
-    RobStride_Motor_SendFrame(&frame);
+    (void)RobStride_Motor_SendFrame(&frame);
 }
 
 void RobStride_Motor_Task_Run(void *argument)

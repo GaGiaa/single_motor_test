@@ -5,7 +5,7 @@
 #include "robstride_motor.h"
 
 #ifndef ROBSTRIDE_DEBUG_MOTOR_ID
-#define ROBSTRIDE_DEBUG_MOTOR_ID          (1U)
+#define ROBSTRIDE_DEBUG_MOTOR_ID          (0x7FU)
 #endif
 
 #ifndef ROBSTRIDE_DEBUG_HOST_CAN_ID
@@ -16,8 +16,8 @@
 #define ROBSTRIDE_DEBUG_MOTOR_TYPE        ROBSTRIDE_MOTOR_TYPE_EL05
 #endif
 
-#if (ROBSTRIDE_DEBUG_MOTOR_ID < 1U) || (ROBSTRIDE_DEBUG_MOTOR_ID > 16U)
-#error "ROBSTRIDE_DEBUG_MOTOR_ID must be from 1 to 16"
+#if (ROBSTRIDE_DEBUG_MOTOR_ID > 0xFFU)
+#error "ROBSTRIDE_DEBUG_MOTOR_ID must be from 0 to 255"
 #endif
 
 #if (ROBSTRIDE_DEBUG_HOST_CAN_ID > 0xFFU)

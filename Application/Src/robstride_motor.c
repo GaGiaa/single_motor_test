@@ -4,15 +4,31 @@
 #include <stddef.h>
 #include <string.h>
 
+typedef union {
+    float value;
+    uint8_t bytes[4];
+} robstride_float32_bytes_t;
+
 static uint16_t robstride_be_u16(const uint8_t data[8], uint8_t index)
 {
     return (uint16_t)(((uint16_t)data[index] << 8) | data[index + 1U]);
+}
+
+static uint16_t robstride_le_u16(const uint8_t data[8], uint8_t index)
+{
+    return (uint16_t)(((uint16_t)data[index + 1U] << 8) | data[index]);
 }
 
 static void robstride_put_be_u16(uint8_t data[8], uint8_t index, uint16_t value)
 {
     data[index] = (uint8_t)(value >> 8);
     data[index + 1U] = (uint8_t)(value & 0xFFU);
+}
+
+static void robstride_put_le_u16(uint8_t data[8], uint8_t index, uint16_t value)
+{
+    data[index] = (uint8_t)(value & 0xFFU);
+    data[index + 1U] = (uint8_t)(value >> 8);
 }
 
 uint16_t RobStride_Motor_FloatToUint16(float value, float min_value, float max_value)
@@ -61,7 +77,7 @@ RobStride_Motor_Config RobStride_Motor_MakeConfig(RobStride_Motor_Type motor_typ
 
     memset(&config, 0, sizeof(config));
     config.motor_type = ROBSTRIDE_MOTOR_TYPE_EL05;
-    config.motor_id = (motor_id == 0U || motor_id > 16U) ? 1U : motor_id;
+    config.motor_id = (motor_id == 0U) ? 1U : motor_id;
     config.host_can_id = host_can_id;
 
     (void)motor_type;
@@ -175,11 +191,199 @@ void RobStride_Motor_MakeSetZeroFrame(const RobStride_Motor_Config *config, RobS
     frame->data[0] = 1U;
 }
 
+void RobStride_Motor_MakeActiveReportFrame(const RobStride_Motor_Config *config,
+                                           bool enable_active_report,
+                                           RobStride_Motor_Frame *frame)
+{
+    const RobStride_Motor_Config default_config = RobStride_Motor_MakeConfig(ROBSTRIDE_MOTOR_TYPE_EL05, 1U, 0xFDU);
+    const RobStride_Motor_Config *active_config = (config != NULL) ? config : &default_config;
+
+    if (frame == NULL) {
+        return;
+    }
+
+    memset(frame, 0, sizeof(*frame));
+    frame->can_id = RobStride_Motor_BuildCanId(ROBSTRIDE_COMM_ACTIVE_REPORT,
+                                               active_config->host_can_id,
+                                               ROBSTRIDE_DEVICE_ID_BROADCAST_TARGET_ID);
+    frame->data[0] = 0x01U;
+    frame->data[1] = 0x02U;
+    frame->data[2] = 0x03U;
+    frame->data[3] = 0x04U;
+    frame->data[4] = 0x05U;
+    frame->data[5] = 0x06U;
+    frame->data[6] = enable_active_report ? 0x01U : 0x00U;
+    frame->data[7] = 0x00U;
+}
+
+void RobStride_Motor_MakeGetDeviceIdFrame(const RobStride_Motor_Config *config, RobStride_Motor_Frame *frame)
+{
+    const RobStride_Motor_Config default_config = RobStride_Motor_MakeConfig(ROBSTRIDE_MOTOR_TYPE_EL05, 1U, 0xFDU);
+    const RobStride_Motor_Config *active_config = (config != NULL) ? config : &default_config;
+
+    if (frame == NULL) {
+        return;
+    }
+
+    memset(frame, 0, sizeof(*frame));
+    frame->can_id = RobStride_Motor_BuildCanId(ROBSTRIDE_COMM_GET_DEVICE_ID,
+                                               active_config->host_can_id,
+                                               ROBSTRIDE_DEVICE_ID_BROADCAST_TARGET_ID);
+}
+
+void RobStride_Motor_MakeReadSingleParamFrame(const RobStride_Motor_Config *config,
+                                              uint16_t param_index,
+                                              RobStride_Motor_Frame *frame)
+{
+    const RobStride_Motor_Config default_config = RobStride_Motor_MakeConfig(ROBSTRIDE_MOTOR_TYPE_EL05, 1U, 0xFDU);
+    const RobStride_Motor_Config *active_config = (config != NULL) ? config : &default_config;
+
+    if (frame == NULL) {
+        return;
+    }
+
+    memset(frame, 0, sizeof(*frame));
+    frame->can_id = RobStride_Motor_BuildCanId(ROBSTRIDE_COMM_READ_SINGLE_PARAM,
+                                               active_config->host_can_id,
+                                               ROBSTRIDE_DEVICE_ID_BROADCAST_TARGET_ID);
+    robstride_put_le_u16(frame->data, 0U, param_index);
+}
+
+bool RobStride_Motor_ParseDeviceIdResponse(uint32_t can_id,
+                                           const uint8_t data[8],
+                                           uint8_t *motor_id,
+                                           uint8_t uid[8])
+{
+    if (data == NULL || motor_id == NULL || uid == NULL) {
+        return false;
+    }
+
+    if (RobStride_Motor_GetCommType(can_id) != ROBSTRIDE_COMM_GET_DEVICE_ID ||
+        RobStride_Motor_GetTargetId(can_id) != ROBSTRIDE_DEVICE_ID_RESPONSE_TARGET_ID) {
+        return false;
+    }
+
+    *motor_id = (uint8_t)(RobStride_Motor_GetDataArea2(can_id) & 0xFFU);
+    memcpy(uid, data, 8U);
+    return true;
+}
+
+bool RobStride_Motor_ParseReadSingleUint8Response(uint32_t can_id,
+                                                  const uint8_t data[8],
+                                                  uint16_t expected_param_index,
+                                                  uint8_t expected_host_can_id,
+                                                  uint8_t *value)
+{
+    uint16_t data_area2;
+
+    if (data == NULL || value == NULL) {
+        return false;
+    }
+
+    if (RobStride_Motor_GetCommType(can_id) != ROBSTRIDE_COMM_READ_SINGLE_PARAM ||
+        RobStride_Motor_GetTargetId(can_id) != expected_host_can_id) {
+        return false;
+    }
+
+    data_area2 = RobStride_Motor_GetDataArea2(can_id);
+    if ((uint8_t)(data_area2 & 0xFFU) != ROBSTRIDE_DEVICE_ID_BROADCAST_TARGET_ID ||
+        (uint8_t)((data_area2 >> 8) & 0xFFU) != 0U ||
+        robstride_le_u16(data, 0U) != expected_param_index ||
+        robstride_le_u16(data, 2U) != 0U) {
+        return false;
+    }
+
+    *value = data[4];
+    return true;
+}
+
+bool RobStride_Motor_ParseReadSingleFloat32Response(uint32_t can_id,
+                                                    const uint8_t data[8],
+                                                    uint16_t expected_param_index,
+                                                    uint8_t expected_host_can_id,
+                                                    float *value)
+{
+    uint16_t data_area2;
+    robstride_float32_bytes_t parsed_value;
+
+    if (data == NULL || value == NULL) {
+        return false;
+    }
+
+    if (RobStride_Motor_GetCommType(can_id) != ROBSTRIDE_COMM_READ_SINGLE_PARAM ||
+        RobStride_Motor_GetTargetId(can_id) != expected_host_can_id) {
+        return false;
+    }
+
+    data_area2 = RobStride_Motor_GetDataArea2(can_id);
+    if ((uint8_t)(data_area2 & 0xFFU) != ROBSTRIDE_DEVICE_ID_BROADCAST_TARGET_ID ||
+        (uint8_t)((data_area2 >> 8) & 0xFFU) != 0U ||
+        robstride_le_u16(data, 0U) != expected_param_index ||
+        robstride_le_u16(data, 2U) != 0U) {
+        return false;
+    }
+
+    parsed_value.bytes[0] = data[4];
+    parsed_value.bytes[1] = data[5];
+    parsed_value.bytes[2] = data[6];
+    parsed_value.bytes[3] = data[7];
+    *value = parsed_value.value;
+    return true;
+}
+
+bool RobStride_Motor_ParseReadSingleParamFailure(uint32_t can_id,
+                                                 const uint8_t data[8],
+                                                 uint16_t expected_param_index,
+                                                 uint8_t expected_host_can_id,
+                                                 uint8_t *failure_status)
+{
+    uint16_t data_area2;
+    uint8_t status_code;
+
+    if (data == NULL || failure_status == NULL) {
+        return false;
+    }
+
+    if (RobStride_Motor_GetCommType(can_id) != ROBSTRIDE_COMM_READ_SINGLE_PARAM ||
+        RobStride_Motor_GetTargetId(can_id) != expected_host_can_id) {
+        return false;
+    }
+
+    data_area2 = RobStride_Motor_GetDataArea2(can_id);
+    if ((uint8_t)(data_area2 & 0xFFU) != ROBSTRIDE_DEVICE_ID_BROADCAST_TARGET_ID ||
+        robstride_le_u16(data, 0U) != expected_param_index ||
+        robstride_le_u16(data, 2U) != 0U) {
+        return false;
+    }
+
+    status_code = (uint8_t)((data_area2 >> 8) & 0xFFU);
+    if (status_code == 0U) {
+        return false;
+    }
+
+    *failure_status = status_code;
+    return true;
+}
+
+uint16_t RobStride_Motor_SelectReadableParamIndex(RobStride_ReadParam_Target target)
+{
+    switch (target) {
+    case ROBSTRIDE_READ_PARAM_TARGET_RUN_MODE:
+        return ROBSTRIDE_PARAM_RUN_MODE;
+    case ROBSTRIDE_READ_PARAM_TARGET_LOC_KP:
+        return ROBSTRIDE_PARAM_LOC_KP;
+    case ROBSTRIDE_READ_PARAM_TARGET_CAN_ID:
+    default:
+        return ROBSTRIDE_PARAM_CAN_ID;
+    }
+}
+
 bool RobStride_Motor_UpdateFeedback(RobStride_Motor_State *motor,
                                     uint32_t can_id,
                                     const uint8_t data[8])
 {
     uint8_t motor_id;
+    uint8_t host_can_id;
     uint8_t comm_type;
 
     if (motor == NULL || data == NULL) {
@@ -187,8 +391,19 @@ bool RobStride_Motor_UpdateFeedback(RobStride_Motor_State *motor,
     }
 
     comm_type = RobStride_Motor_GetCommType(can_id);
-    motor_id = (uint8_t)((can_id >> 8) & 0xFFU);
-    if (comm_type != ROBSTRIDE_COMM_FEEDBACK || motor_id != motor->config.motor_id) {
+    if (comm_type == ROBSTRIDE_COMM_FEEDBACK) {
+        motor_id = (uint8_t)((can_id >> 8) & 0xFFU);
+    } else if (comm_type == ROBSTRIDE_COMM_ACTIVE_REPORT) {
+        host_can_id = RobStride_Motor_GetTargetId(can_id);
+        motor_id = (uint8_t)(RobStride_Motor_GetDataArea2(can_id) & 0xFFU);
+        if (host_can_id != motor->config.host_can_id) {
+            return false;
+        }
+    } else {
+        return false;
+    }
+
+    if (motor_id != motor->config.motor_id) {
         return false;
     }
 

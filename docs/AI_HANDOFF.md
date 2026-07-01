@@ -65,7 +65,7 @@ DJI 配置：
 
 RobStride 配置文件：`Application/Inc/robstride_motor_debug_config.h`
 
-- `ROBSTRIDE_DEBUG_MOTOR_ID`：只能为 `1U` 到 `16U`，默认 `1U`。
+- `ROBSTRIDE_DEBUG_MOTOR_ID`：只能为 `0U` 到 `255U` 中的非零值，默认 `0x7F`。
 - `ROBSTRIDE_DEBUG_HOST_CAN_ID`：默认 `0xFDU`。
 - `ROBSTRIDE_DEBUG_MOTOR_TYPE`：当前只支持 `ROBSTRIDE_MOTOR_TYPE_EL05`。
 

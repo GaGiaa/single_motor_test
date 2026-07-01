@@ -53,6 +53,11 @@ static uint16_t be_u16(const uint8_t data[8], uint8_t index)
     return (uint16_t)(((uint16_t)data[index] << 8) | data[index + 1U]);
 }
 
+static uint16_t le_u16(const uint8_t data[8], uint8_t index)
+{
+    return (uint16_t)(((uint16_t)data[index + 1U] << 8) | data[index]);
+}
+
 static void test_float_uint16_mapping(void)
 {
     expect_u16("min maps to 0", RobStride_Motor_FloatToUint16(-10.0f, -10.0f, 10.0f), 0U);
@@ -69,9 +74,11 @@ static void test_float_uint16_mapping(void)
 static void test_el05_config_ranges(void)
 {
     RobStride_Motor_Config config = RobStride_Motor_MakeConfig(ROBSTRIDE_MOTOR_TYPE_EL05, 4U, 0xFDU);
+    RobStride_Motor_Config extended_id_config = RobStride_Motor_MakeConfig(ROBSTRIDE_MOTOR_TYPE_EL05, 0x7FU, 0xFDU);
 
     expect_true("motor type EL05", config.motor_type == ROBSTRIDE_MOTOR_TYPE_EL05);
     expect_true("motor id", config.motor_id == 4U);
+    expect_true("extended motor id 0x7F accepted", extended_id_config.motor_id == 0x7FU);
     expect_true("host id", config.host_can_id == 0xFDU);
     expect_near("position min", config.params.position_min_rad, -12.57f, 0.0001f);
     expect_near("position max", config.params.position_max_rad, 12.57f, 0.0001f);
@@ -127,6 +134,183 @@ static void test_control_frames(void)
     expect_true("set zero byte", frame.data[0] == 1U);
 }
 
+static void test_active_report_frame(void)
+{
+    RobStride_Motor_Config config = RobStride_Motor_MakeConfig(ROBSTRIDE_MOTOR_TYPE_EL05, 4U, 0xFDU);
+    RobStride_Motor_Frame frame;
+
+    RobStride_Motor_MakeActiveReportFrame(&config, true, &frame);
+
+    expect_u32("active report comm type", RobStride_Motor_GetCommType(frame.can_id), ROBSTRIDE_COMM_ACTIVE_REPORT);
+    expect_u32("active report host", RobStride_Motor_GetDataArea2(frame.can_id), 0xFDU);
+    expect_u32("active report target", RobStride_Motor_GetTargetId(frame.can_id), ROBSTRIDE_DEVICE_ID_BROADCAST_TARGET_ID);
+    expect_true("active report data header",
+                frame.data[0] == 0x01U &&
+                frame.data[1] == 0x02U &&
+                frame.data[2] == 0x03U &&
+                frame.data[3] == 0x04U &&
+                frame.data[4] == 0x05U &&
+                frame.data[5] == 0x06U);
+    expect_true("active report enable flag", frame.data[6] == 0x01U);
+    expect_true("active report tail zero", frame.data[7] == 0x00U);
+
+    RobStride_Motor_MakeActiveReportFrame(&config, false, &frame);
+    expect_true("active report disable flag", frame.data[6] == 0x00U);
+}
+
+static void test_get_device_id_frame(void)
+{
+    RobStride_Motor_Config config = RobStride_Motor_MakeConfig(ROBSTRIDE_MOTOR_TYPE_EL05, 4U, 0xFDU);
+    RobStride_Motor_Frame frame;
+
+    RobStride_Motor_MakeGetDeviceIdFrame(&config, &frame);
+
+    expect_u32("get device id comm type", RobStride_Motor_GetCommType(frame.can_id), ROBSTRIDE_COMM_GET_DEVICE_ID);
+    expect_u32("get device id host", RobStride_Motor_GetDataArea2(frame.can_id), 0xFDU);
+    expect_u32("get device id target", RobStride_Motor_GetTargetId(frame.can_id), ROBSTRIDE_DEVICE_ID_BROADCAST_TARGET_ID);
+    expect_true("get device id data zero", memcmp(frame.data, "\0\0\0\0\0\0\0\0", 8U) == 0);
+}
+
+static void test_get_device_id_response_parse(void)
+{
+    const uint8_t uid[8] = {0x10U, 0x32U, 0x54U, 0x76U, 0x98U, 0xBAU, 0xDCU, 0xFEU};
+    uint8_t parsed_motor_id = 0U;
+    uint8_t parsed_uid[8] = {0};
+    uint32_t valid_can_id = RobStride_Motor_BuildCanId(ROBSTRIDE_COMM_GET_DEVICE_ID, 0x0005U, ROBSTRIDE_DEVICE_ID_RESPONSE_TARGET_ID);
+    uint32_t wrong_comm_can_id = RobStride_Motor_BuildCanId(ROBSTRIDE_COMM_FEEDBACK, 0x0005U, ROBSTRIDE_DEVICE_ID_RESPONSE_TARGET_ID);
+    uint32_t wrong_target_can_id = RobStride_Motor_BuildCanId(ROBSTRIDE_COMM_GET_DEVICE_ID, 0x0005U, 0x01U);
+
+    expect_true("parse valid device id response",
+                RobStride_Motor_ParseDeviceIdResponse(valid_can_id, uid, &parsed_motor_id, parsed_uid));
+    expect_u32("parsed discovered motor id", parsed_motor_id, 5U);
+    expect_true("parsed uid copied", memcmp(parsed_uid, uid, sizeof(parsed_uid)) == 0);
+    expect_true("reject wrong comm type",
+                !RobStride_Motor_ParseDeviceIdResponse(wrong_comm_can_id, uid, &parsed_motor_id, parsed_uid));
+    expect_true("reject wrong target id",
+                !RobStride_Motor_ParseDeviceIdResponse(wrong_target_can_id, uid, &parsed_motor_id, parsed_uid));
+}
+
+static void test_read_single_param_frame(void)
+{
+    RobStride_Motor_Config config = RobStride_Motor_MakeConfig(ROBSTRIDE_MOTOR_TYPE_EL05, 4U, 0xFDU);
+    RobStride_Motor_Frame frame;
+
+    RobStride_Motor_MakeReadSingleParamFrame(&config, ROBSTRIDE_PARAM_CAN_ID, &frame);
+
+    expect_u32("read param comm type", RobStride_Motor_GetCommType(frame.can_id), ROBSTRIDE_COMM_READ_SINGLE_PARAM);
+    expect_u32("read param host", RobStride_Motor_GetDataArea2(frame.can_id), 0xFDU);
+    expect_u32("read param target", RobStride_Motor_GetTargetId(frame.can_id), ROBSTRIDE_DEVICE_ID_BROADCAST_TARGET_ID);
+    expect_u16("read param index le", le_u16(frame.data, 0U), ROBSTRIDE_PARAM_CAN_ID);
+    expect_true("read param index bytes little endian", frame.data[0] == 0x0AU && frame.data[1] == 0x20U);
+    expect_true("read param reserved zero", frame.data[2] == 0U && frame.data[3] == 0U);
+    expect_true("read param payload zero", frame.data[4] == 0U &&
+                                          frame.data[5] == 0U &&
+                                          frame.data[6] == 0U &&
+                                          frame.data[7] == 0U);
+}
+
+static void test_read_single_param_response_parse(void)
+{
+    uint8_t value_u8 = 0U;
+    uint32_t valid_can_id = RobStride_Motor_BuildCanId(ROBSTRIDE_COMM_READ_SINGLE_PARAM, 0x007FU, 0xFDU);
+    uint32_t fail_can_id = RobStride_Motor_BuildCanId(ROBSTRIDE_COMM_READ_SINGLE_PARAM, 0x017FU, 0xFDU);
+    uint8_t valid_data[8] = {0x0AU, 0x20U, 0x00U, 0x00U, 0x7FU, 0x00U, 0x00U, 0x00U};
+    uint8_t wrong_index_data[8] = {0x0BU, 0x20U, 0x00U, 0x00U, 0x7FU, 0x00U, 0x00U, 0x00U};
+
+    expect_true("parse read param can id response",
+                RobStride_Motor_ParseReadSingleUint8Response(valid_can_id,
+                                                             valid_data,
+                                                             ROBSTRIDE_PARAM_CAN_ID,
+                                                             0xFDU,
+                                                             &value_u8));
+    expect_u32("parsed can id value", value_u8, 0x7FU);
+    expect_true("reject read param failure status",
+                !RobStride_Motor_ParseReadSingleUint8Response(fail_can_id,
+                                                              valid_data,
+                                                              ROBSTRIDE_PARAM_CAN_ID,
+                                                              0xFDU,
+                                                              &value_u8));
+    expect_true("reject read param wrong index",
+                !RobStride_Motor_ParseReadSingleUint8Response(valid_can_id,
+                                                              wrong_index_data,
+                                                              ROBSTRIDE_PARAM_CAN_ID,
+                                                              0xFDU,
+                                                              &value_u8));
+}
+
+static void test_read_single_param_float_response_parse(void)
+{
+    float value_f32 = 0.0f;
+    uint32_t valid_can_id = RobStride_Motor_BuildCanId(ROBSTRIDE_COMM_READ_SINGLE_PARAM, 0x007FU, 0xFDU);
+    uint32_t fail_can_id = RobStride_Motor_BuildCanId(ROBSTRIDE_COMM_READ_SINGLE_PARAM, 0x017FU, 0xFDU);
+    uint8_t valid_data[8] = {0x1EU, 0x70U, 0x00U, 0x00U, 0x00U, 0x00U, 0x20U, 0x41U};
+    uint8_t wrong_index_data[8] = {0x05U, 0x70U, 0x00U, 0x00U, 0x00U, 0x00U, 0x20U, 0x41U};
+
+    expect_true("parse read param float response",
+                RobStride_Motor_ParseReadSingleFloat32Response(valid_can_id,
+                                                               valid_data,
+                                                               ROBSTRIDE_PARAM_LOC_KP,
+                                                               0xFDU,
+                                                               &value_f32));
+    expect_near("parsed loc kp value", value_f32, 10.0f, 0.0001f);
+    expect_true("reject float response failure status",
+                !RobStride_Motor_ParseReadSingleFloat32Response(fail_can_id,
+                                                                valid_data,
+                                                                ROBSTRIDE_PARAM_LOC_KP,
+                                                                0xFDU,
+                                                                &value_f32));
+    expect_true("reject float response wrong index",
+                !RobStride_Motor_ParseReadSingleFloat32Response(valid_can_id,
+                                                                wrong_index_data,
+                                                                ROBSTRIDE_PARAM_LOC_KP,
+                                                                0xFDU,
+                                                                &value_f32));
+}
+
+static void test_read_single_param_failure_parse(void)
+{
+    uint8_t failure_status = 0U;
+    uint32_t fail_can_id = RobStride_Motor_BuildCanId(ROBSTRIDE_COMM_READ_SINGLE_PARAM, 0x017FU, 0xFDU);
+    uint32_t success_can_id = RobStride_Motor_BuildCanId(ROBSTRIDE_COMM_READ_SINGLE_PARAM, 0x007FU, 0xFDU);
+    uint32_t wrong_target_can_id = RobStride_Motor_BuildCanId(ROBSTRIDE_COMM_READ_SINGLE_PARAM, 0x017FU, 0xFEU);
+    uint8_t valid_data[8] = {0x0AU, 0x20U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U};
+    uint8_t wrong_index_data[8] = {0x05U, 0x70U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U};
+
+    expect_true("parse read param failure response",
+                RobStride_Motor_ParseReadSingleParamFailure(fail_can_id,
+                                                            valid_data,
+                                                            ROBSTRIDE_PARAM_CAN_ID,
+                                                            0xFDU,
+                                                            &failure_status));
+    expect_u32("parsed read param failure status", failure_status, 1U);
+    expect_true("reject success response as failure",
+                !RobStride_Motor_ParseReadSingleParamFailure(success_can_id,
+                                                             valid_data,
+                                                             ROBSTRIDE_PARAM_CAN_ID,
+                                                             0xFDU,
+                                                             &failure_status));
+    expect_true("reject wrong response target host",
+                !RobStride_Motor_ParseReadSingleParamFailure(wrong_target_can_id,
+                                                             valid_data,
+                                                             ROBSTRIDE_PARAM_CAN_ID,
+                                                             0xFDU,
+                                                             &failure_status));
+    expect_true("reject wrong failure response index",
+                !RobStride_Motor_ParseReadSingleParamFailure(fail_can_id,
+                                                             wrong_index_data,
+                                                             ROBSTRIDE_PARAM_CAN_ID,
+                                                             0xFDU,
+                                                             &failure_status));
+}
+
+static void test_select_readable_param_index(void)
+{
+    expect_u16("read target can id", RobStride_Motor_SelectReadableParamIndex(ROBSTRIDE_READ_PARAM_TARGET_CAN_ID), ROBSTRIDE_PARAM_CAN_ID);
+    expect_u16("read target run mode", RobStride_Motor_SelectReadableParamIndex(ROBSTRIDE_READ_PARAM_TARGET_RUN_MODE), ROBSTRIDE_PARAM_RUN_MODE);
+    expect_u16("read target loc kp", RobStride_Motor_SelectReadableParamIndex(ROBSTRIDE_READ_PARAM_TARGET_LOC_KP), ROBSTRIDE_PARAM_LOC_KP);
+    expect_u16("fallback read target", RobStride_Motor_SelectReadableParamIndex((RobStride_ReadParam_Target)99), ROBSTRIDE_PARAM_CAN_ID);
+}
+
 static void test_feedback_parse(void)
 {
     RobStride_Motor_Config config = RobStride_Motor_MakeConfig(ROBSTRIDE_MOTOR_TYPE_EL05, 4U, 0xFDU);
@@ -157,11 +341,48 @@ static void test_feedback_parse(void)
     expect_near("feedback temp", state.temperature_c, 30.0f, 0.001f);
 }
 
+static void test_active_report_feedback_parse(void)
+{
+    RobStride_Motor_Config config = RobStride_Motor_MakeConfig(ROBSTRIDE_MOTOR_TYPE_EL05, 4U, 0xFDU);
+    RobStride_Motor_State state;
+    RobStride_Motor_State wrong_host_state;
+    uint8_t data[8] = {0};
+    uint32_t can_id = RobStride_Motor_BuildCanId(ROBSTRIDE_COMM_ACTIVE_REPORT,
+                                                 (uint16_t)((2U << 14) | (0x15U << 8) | 4U),
+                                                 0xFDU);
+    uint32_t wrong_host_can_id = RobStride_Motor_BuildCanId(ROBSTRIDE_COMM_ACTIVE_REPORT,
+                                                            (uint16_t)((2U << 14) | (0x15U << 8) | 4U),
+                                                            0xFEU);
+
+    data[0] = 0x80U;
+    data[1] = 0x00U;
+    data[2] = 0xBFU;
+    data[3] = 0xFFU;
+    data[4] = 0x80U;
+    data[5] = 0x00U;
+    data[6] = 0x01U;
+    data[7] = 0x2CU;
+
+    RobStride_Motor_Init(&state, &config);
+    RobStride_Motor_Init(&wrong_host_state, &config);
+    expect_true("active report accepted", RobStride_Motor_UpdateFeedback(&state, can_id, data));
+    expect_true("active report valid", state.is_valid);
+    expect_true("active report motor id", state.motor_id == 4U);
+    expect_true("active report fault", state.fault_code == 0x15U);
+    expect_true("active report mode state", state.mode_state == 2U);
+    expect_near("active report position", state.position_rad, 0.0f, 0.001f);
+    expect_near("active report velocity", state.velocity_rad_s, 25.0f, 0.02f);
+    expect_near("active report torque", state.torque_Nm, 0.0f, 0.001f);
+    expect_near("active report temp", state.temperature_c, 30.0f, 0.001f);
+    expect_true("active report rejects wrong host",
+                !RobStride_Motor_UpdateFeedback(&wrong_host_state, wrong_host_can_id, data));
+}
+
 static void test_default_config(void)
 {
-    expect_u32("default protocol", MOTOR_DEBUG_PROTOCOL, MOTOR_DEBUG_PROTOCOL_DJI);
+    expect_u32("default protocol", MOTOR_DEBUG_PROTOCOL, MOTOR_DEBUG_PROTOCOL_ROBSTRIDE);
     expect_u32("default can channel", MOTOR_DEBUG_CAN_CHANNEL, 2U);
-    expect_u32("default robstride motor id", ROBSTRIDE_DEBUG_MOTOR_ID, 1U);
+    expect_u32("default robstride motor id", ROBSTRIDE_DEBUG_MOTOR_ID, 0x7FU);
     expect_u32("default host id", ROBSTRIDE_DEBUG_HOST_CAN_ID, 0xFDU);
     expect_u32("default robstride type", ROBSTRIDE_DEBUG_MOTOR_TYPE, ROBSTRIDE_MOTOR_TYPE_EL05);
 }
@@ -172,7 +393,16 @@ int main(void)
     test_el05_config_ranges();
     test_motion_control_frame();
     test_control_frames();
+    test_active_report_frame();
+    test_get_device_id_frame();
+    test_get_device_id_response_parse();
+    test_read_single_param_frame();
+    test_read_single_param_response_parse();
+    test_read_single_param_float_response_parse();
+    test_read_single_param_failure_parse();
+    test_select_readable_param_index();
     test_feedback_parse();
+    test_active_report_feedback_parse();
     test_default_config();
 
     if (g_failures != 0) {

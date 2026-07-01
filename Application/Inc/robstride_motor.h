@@ -15,6 +15,12 @@
 #define ROBSTRIDE_EL05_KP_MAX                 (500.0f)
 #define ROBSTRIDE_EL05_KD_MIN                 (0.0f)
 #define ROBSTRIDE_EL05_KD_MAX                 (5.0f)
+#define ROBSTRIDE_DEVICE_ID_BROADCAST_TARGET_ID   (0x7FU)
+#define ROBSTRIDE_DEVICE_ID_RESPONSE_TARGET_ID    (0xFEU)
+#define ROBSTRIDE_PARAM_CAN_ID                    (0x200AU)
+#define ROBSTRIDE_PARAM_CAN_MASTER                (0x200BU)
+#define ROBSTRIDE_PARAM_RUN_MODE                  (0x7005U)
+#define ROBSTRIDE_PARAM_LOC_KP                    (0x701EU)
 
 typedef enum {
     ROBSTRIDE_COMM_GET_DEVICE_ID = 0,
@@ -23,11 +29,19 @@ typedef enum {
     ROBSTRIDE_COMM_ENABLE = 3,
     ROBSTRIDE_COMM_DISABLE = 4,
     ROBSTRIDE_COMM_SET_ZERO = 6,
+    ROBSTRIDE_COMM_READ_SINGLE_PARAM = 17,
+    ROBSTRIDE_COMM_ACTIVE_REPORT = 24,
 } RobStride_CommType;
 
 typedef enum {
     ROBSTRIDE_MOTOR_TYPE_EL05 = 1,
 } RobStride_Motor_Type;
+
+typedef enum {
+    ROBSTRIDE_READ_PARAM_TARGET_CAN_ID = 0,
+    ROBSTRIDE_READ_PARAM_TARGET_RUN_MODE = 1,
+    ROBSTRIDE_READ_PARAM_TARGET_LOC_KP = 2,
+} RobStride_ReadParam_Target;
 
 typedef struct {
     float position_min_rad;
@@ -92,6 +106,33 @@ void RobStride_Motor_MakeDisableFrame(const RobStride_Motor_Config *config,
                                       bool clear_fault,
                                       RobStride_Motor_Frame *frame);
 void RobStride_Motor_MakeSetZeroFrame(const RobStride_Motor_Config *config, RobStride_Motor_Frame *frame);
+void RobStride_Motor_MakeActiveReportFrame(const RobStride_Motor_Config *config,
+                                           bool enable_active_report,
+                                           RobStride_Motor_Frame *frame);
+void RobStride_Motor_MakeGetDeviceIdFrame(const RobStride_Motor_Config *config, RobStride_Motor_Frame *frame);
+void RobStride_Motor_MakeReadSingleParamFrame(const RobStride_Motor_Config *config,
+                                              uint16_t param_index,
+                                              RobStride_Motor_Frame *frame);
+bool RobStride_Motor_ParseDeviceIdResponse(uint32_t can_id,
+                                           const uint8_t data[8],
+                                           uint8_t *motor_id,
+                                           uint8_t uid[8]);
+bool RobStride_Motor_ParseReadSingleUint8Response(uint32_t can_id,
+                                                  const uint8_t data[8],
+                                                  uint16_t expected_param_index,
+                                                  uint8_t expected_host_can_id,
+                                                  uint8_t *value);
+bool RobStride_Motor_ParseReadSingleFloat32Response(uint32_t can_id,
+                                                    const uint8_t data[8],
+                                                    uint16_t expected_param_index,
+                                                    uint8_t expected_host_can_id,
+                                                    float *value);
+bool RobStride_Motor_ParseReadSingleParamFailure(uint32_t can_id,
+                                                 const uint8_t data[8],
+                                                 uint16_t expected_param_index,
+                                                 uint8_t expected_host_can_id,
+                                                 uint8_t *failure_status);
+uint16_t RobStride_Motor_SelectReadableParamIndex(RobStride_ReadParam_Target target);
 bool RobStride_Motor_UpdateFeedback(RobStride_Motor_State *motor,
                                     uint32_t can_id,
                                     const uint8_t data[8]);
