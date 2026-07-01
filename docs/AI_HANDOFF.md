@@ -132,6 +132,11 @@ g_robstride_motor_debug
 - `kp`、`kd`：Type 1 运控刚度和阻尼。
 - `feedback_position_rad`、`feedback_velocity_rad_s`、`feedback_torque_Nm`、`feedback_temperature_c`：Type 2 反馈。
 - `mode_state`、`fault_code`：从 Type 2 扩展 ID 解析出的模式和故障字段。
+- `type17_read.request`：置 `true` 后发送一次 Type 17 单参数读取请求，然后任务自动清零。
+- `type17_read.param_target`、`type17_read.param_index`：Type 17 当前读取目标和对应参数索引；`param_index` 由任务根据 `param_target` 自动刷新。
+- `type17_read.request_count`、`type17_read.success_count`、`type17_read.fail_count`、`type17_read.unhandled_count`、`type17_read.send_fail_count`、`type17_read.branch_count`：Type 17 请求进入分支、发送、成功、失败、未识别和发送失败计数。
+- `type17_read.last_u8_value`、`type17_read.last_u8_value_valid`：最近一次 Type 17 成功读取到的单字节参数值及其有效标记，不再只表示电机 ID。
+- `type17_read.last_fail_status`、`type17_read.last_tx_can_id`、`type17_read.last_success_rx_can_id`、`type17_read.last_fail_rx_can_id`：最近一次 Type 17 失败状态、请求发送帧、成功响应帧和失败响应帧 ID。
 - `last_rx_can_id`、`last_tx_can_id`：最近一次收发扩展帧 ID。
 - `dsp_cmsis_enabled`、`dsp_build_flags`：只读 DSP 编译配置回显；`dsp_build_flags` bit0 表示 CMSIS-DSP 接入宏启用，bit1 表示 `ARM_MATH_CM7`。
 - `time_profiler_enabled`、`last_loop_us`、`max_loop_us`、`avg_loop_us`：只读任务循环耗时统计，单位 us。

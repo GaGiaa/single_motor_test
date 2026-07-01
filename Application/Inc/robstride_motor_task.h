@@ -7,6 +7,24 @@
 #include "robstride_motor.h"
 
 typedef struct {
+    volatile bool request;
+    volatile uint32_t branch_count;
+    volatile uint32_t request_count;
+    volatile uint32_t success_count;
+    volatile uint32_t send_fail_count;
+    volatile uint32_t unhandled_count;
+    volatile uint32_t fail_count;
+    volatile uint8_t last_fail_status;
+    volatile uint8_t last_u8_value;
+    volatile uint16_t param_index;
+    volatile uint8_t param_target;
+    volatile uint32_t last_tx_can_id;
+    volatile uint32_t last_success_rx_can_id;
+    volatile uint32_t last_fail_rx_can_id;
+    volatile bool last_u8_value_valid;
+} RobStride_Motor_Type17_Read_Debug;
+
+typedef struct {
     volatile bool enable;
     volatile bool clear_fault_on_disable;
     volatile bool set_zero_request;
@@ -38,21 +56,7 @@ typedef struct {
     volatile uint8_t last_device_uid[8];
     volatile uint32_t last_device_id_rx_can_id;
     volatile bool device_id_valid;
-    volatile bool confirm_can_id_request;
-    volatile uint32_t can_id_confirm_branch_count;
-    volatile uint32_t can_id_confirm_request_count;
-    volatile uint32_t can_id_confirm_response_count;
-    volatile uint32_t can_id_confirm_send_fail_count;
-    volatile uint32_t can_id_confirm_unhandled_count;
-    volatile uint32_t can_id_confirm_read_fail_count;
-    volatile uint8_t last_can_id_confirm_fail_status;
-    volatile uint8_t confirmed_motor_id;
-    volatile uint16_t confirm_param_index;
-    volatile uint8_t confirm_param_target;
-    volatile uint32_t last_can_id_confirm_tx_can_id;
-    volatile uint32_t last_can_id_confirm_rx_can_id;
-    volatile uint32_t last_can_id_confirm_fail_rx_can_id;
-    volatile bool confirmed_motor_id_valid;
+    volatile RobStride_Motor_Type17_Read_Debug type17_read;
     volatile uint32_t raw_rx_count;
     volatile uint32_t last_unhandled_rx_can_id;
     volatile uint8_t last_unhandled_rx_data[8];

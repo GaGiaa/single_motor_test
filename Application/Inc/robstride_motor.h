@@ -121,16 +121,19 @@ bool RobStride_Motor_ParseReadSingleUint8Response(uint32_t can_id,
                                                   const uint8_t data[8],
                                                   uint16_t expected_param_index,
                                                   uint8_t expected_host_can_id,
+                                                  uint8_t expected_motor_id,
                                                   uint8_t *value);
 bool RobStride_Motor_ParseReadSingleFloat32Response(uint32_t can_id,
                                                     const uint8_t data[8],
                                                     uint16_t expected_param_index,
                                                     uint8_t expected_host_can_id,
+                                                    uint8_t expected_motor_id,
                                                     float *value);
 bool RobStride_Motor_ParseReadSingleParamFailure(uint32_t can_id,
                                                  const uint8_t data[8],
                                                  uint16_t expected_param_index,
                                                  uint8_t expected_host_can_id,
+                                                 uint8_t expected_motor_id,
                                                  uint8_t *failure_status);
 uint16_t RobStride_Motor_SelectReadableParamIndex(RobStride_ReadParam_Target target);
 bool RobStride_Motor_UpdateFeedback(RobStride_Motor_State *motor,

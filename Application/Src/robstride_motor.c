@@ -245,7 +245,7 @@ void RobStride_Motor_MakeReadSingleParamFrame(const RobStride_Motor_Config *conf
     memset(frame, 0, sizeof(*frame));
     frame->can_id = RobStride_Motor_BuildCanId(ROBSTRIDE_COMM_READ_SINGLE_PARAM,
                                                active_config->host_can_id,
-                                               ROBSTRIDE_DEVICE_ID_BROADCAST_TARGET_ID);
+                                               active_config->motor_id);
     robstride_put_le_u16(frame->data, 0U, param_index);
 }
 
@@ -272,6 +272,7 @@ bool RobStride_Motor_ParseReadSingleUint8Response(uint32_t can_id,
                                                   const uint8_t data[8],
                                                   uint16_t expected_param_index,
                                                   uint8_t expected_host_can_id,
+                                                  uint8_t expected_motor_id,
                                                   uint8_t *value)
 {
     uint16_t data_area2;
@@ -286,7 +287,7 @@ bool RobStride_Motor_ParseReadSingleUint8Response(uint32_t can_id,
     }
 
     data_area2 = RobStride_Motor_GetDataArea2(can_id);
-    if ((uint8_t)(data_area2 & 0xFFU) != ROBSTRIDE_DEVICE_ID_BROADCAST_TARGET_ID ||
+    if ((uint8_t)(data_area2 & 0xFFU) != expected_motor_id ||
         (uint8_t)((data_area2 >> 8) & 0xFFU) != 0U ||
         robstride_le_u16(data, 0U) != expected_param_index ||
         robstride_le_u16(data, 2U) != 0U) {
@@ -301,6 +302,7 @@ bool RobStride_Motor_ParseReadSingleFloat32Response(uint32_t can_id,
                                                     const uint8_t data[8],
                                                     uint16_t expected_param_index,
                                                     uint8_t expected_host_can_id,
+                                                    uint8_t expected_motor_id,
                                                     float *value)
 {
     uint16_t data_area2;
@@ -316,7 +318,7 @@ bool RobStride_Motor_ParseReadSingleFloat32Response(uint32_t can_id,
     }
 
     data_area2 = RobStride_Motor_GetDataArea2(can_id);
-    if ((uint8_t)(data_area2 & 0xFFU) != ROBSTRIDE_DEVICE_ID_BROADCAST_TARGET_ID ||
+    if ((uint8_t)(data_area2 & 0xFFU) != expected_motor_id ||
         (uint8_t)((data_area2 >> 8) & 0xFFU) != 0U ||
         robstride_le_u16(data, 0U) != expected_param_index ||
         robstride_le_u16(data, 2U) != 0U) {
@@ -335,6 +337,7 @@ bool RobStride_Motor_ParseReadSingleParamFailure(uint32_t can_id,
                                                  const uint8_t data[8],
                                                  uint16_t expected_param_index,
                                                  uint8_t expected_host_can_id,
+                                                 uint8_t expected_motor_id,
                                                  uint8_t *failure_status)
 {
     uint16_t data_area2;
@@ -350,7 +353,7 @@ bool RobStride_Motor_ParseReadSingleParamFailure(uint32_t can_id,
     }
 
     data_area2 = RobStride_Motor_GetDataArea2(can_id);
-    if ((uint8_t)(data_area2 & 0xFFU) != ROBSTRIDE_DEVICE_ID_BROADCAST_TARGET_ID ||
+    if ((uint8_t)(data_area2 & 0xFFU) != expected_motor_id ||
         robstride_le_u16(data, 0U) != expected_param_index ||
         robstride_le_u16(data, 2U) != 0U) {
         return false;
